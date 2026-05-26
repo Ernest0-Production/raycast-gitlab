@@ -90,6 +90,41 @@ export function dataToProject(project: any): Project {
   };
 }
 
+function pipelineStatusFromJson(pipeline: any): string | undefined {
+  if (!pipeline || typeof pipeline !== "object") {
+    return undefined;
+  }
+  if (typeof pipeline.status === "string" && pipeline.status.length > 0) {
+    return pipeline.status;
+  }
+  const detailedStatus = pipeline.detailed_status;
+  if (detailedStatus && typeof detailedStatus === "object") {
+    if (typeof detailedStatus.group === "string" && detailedStatus.group.length > 0) {
+      return detailedStatus.group;
+    }
+    if (typeof detailedStatus.label === "string" && detailedStatus.label.length > 0) {
+      return detailedStatus.label;
+    }
+  }
+  return undefined;
+}
+
+function parseHeadPipelineFromJson(mr: any): MRHeadPipeline | undefined {
+  const pipeline = mr.head_pipeline ?? mr.pipeline;
+  const status = pipelineStatusFromJson(pipeline);
+  if (!status) {
+    return undefined;
+  }
+  return {
+    id: pipeline.id,
+    status,
+  };
+}
+
+export function getMRHeadPipelineStatus(mr: MergeRequest | undefined): string | undefined {
+  return mr?.head_pipeline?.status;
+}
+
 export function jsonDataToMergeRequest(mr: any): MergeRequest {
   return {
     title: mr.title,
@@ -100,6 +135,7 @@ export function jsonDataToMergeRequest(mr: any): MergeRequest {
     updated_at: mr.updated_at,
     created_at: mr.created_at,
     merged_at: mr.merged_at,
+    closed_at: mr.closed_at,
     author: maybeUserFromJson(mr.author),
     assignees: mr.assignees.map(userFromJson),
     reviewers: mr.reviewers?.map(userFromJson) || [],
@@ -119,6 +155,7 @@ export function jsonDataToMergeRequest(mr: any): MergeRequest {
     merge_when_pipeline_succeeds: mr.merge_when_pipeline_succeeds,
     user_notes_count: mr.user_notes_count,
     user: mr.user ? { can_merge: mr.user.can_merge === true } : undefined,
+    head_pipeline: parseHeadPipelineFromJson(mr),
   };
 }
 
@@ -268,6 +305,11 @@ export interface MergeRequestUser {
   can_merge?: boolean;
 }
 
+export interface MRHeadPipeline {
+  id: number;
+  status: string;
+}
+
 export class MergeRequest {
   public title = "";
   public description = "";
@@ -281,6 +323,7 @@ export class MergeRequest {
   public updated_at = "";
   public created_at = "";
   public merged_at = "";
+  public closed_at = "";
   public project_id = 0;
   public reference_full = "";
   public labels: Label[] = [];
@@ -296,6 +339,7 @@ export class MergeRequest {
   public merge_when_pipeline_succeeds: boolean | undefined = undefined;
   public user_notes_count: number | undefined = undefined;
   public user?: MergeRequestUser;
+  public head_pipeline?: MRHeadPipeline;
 }
 
 export class Pipeline {
@@ -795,6 +839,9 @@ export class GitLab {
     if (!params.with_labels_details) {
       params.with_labels_details = "true";
     }
+    if (params.with_merge_status_recheck === undefined) {
+      params.with_merge_status_recheck = "true";
+    }
     const projectPrefix = project ? `projects/${project.id}/` : "";
     const issueItems: MergeRequest[] = await this.fetch(`${projectPrefix}merge_requests`, params).then((issues) => {
       return issues.map((issue: any) => jsonDataToMergeRequest(issue));
@@ -840,6 +887,9 @@ export class GitLab {
   async getGroupMergeRequests(params: Record<string, any>, group: Group): Promise<MergeRequest[]> {
     if (!params.with_labels_details) {
       params.with_labels_details = "true";
+    }
+    if (params.with_merge_status_recheck === undefined) {
+      params.with_merge_status_recheck = "true";
     }
     const issueItems: MergeRequest[] = await this.fetch(`groups/${group.id}/merge_requests`, params).then((issues) => {
       return issues.map((issue: any) => jsonDataToMergeRequest(issue));

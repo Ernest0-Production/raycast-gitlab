@@ -5,6 +5,7 @@ import { MergeRequest } from "../gitlabapi";
 import { GitLabIcons } from "../icons";
 import { getErrorMessage, showErrorToast } from "../utils";
 import { ProjectCommitList } from "./commits/list";
+import { MRPipelineList } from "./mr_pipelines";
 import { findTodoForMR, useTodos } from "./todo/utils";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -251,6 +252,29 @@ export function ShowMRCommitsAction(props: { mr: MergeRequest }) {
       icon={{ source: GitLabIcons.commit, tintColor: Color.PrimaryText }}
       shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
       target={<ProjectCommitList projectID={mr.project_id} refName={mr.source_branch} />}
+    />
+  );
+}
+
+export function ShowMRPipelinesAction(props: { mr: MergeRequest }) {
+  const mr = props.mr;
+  return (
+    <Action.Push
+      title="Show Pipelines"
+      icon={{ source: GitLabIcons.ci, tintColor: Color.PrimaryText }}
+      shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
+      target={<MRPipelineList mr={mr} />}
+    />
+  );
+}
+
+export function RefreshMergeRequestsAction(props: { onRefresh?: () => void }) {
+  return (
+    <Action
+      title="Refresh"
+      icon={{ source: Icon.ArrowClockwise, tintColor: Color.PrimaryText }}
+      shortcut={{ modifiers: ["cmd"], key: "r" }}
+      onAction={() => props.onRefresh?.()}
     />
   );
 }

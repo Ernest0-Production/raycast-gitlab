@@ -197,15 +197,19 @@ function MyProjectsDropdownItem(props: { project: Project }) {
 
 export function MyProjectsDropdown(props: {
   onChange: (pro: Project | undefined) => void;
+  projects?: Project[];
+  value?: string;
   storeValue?: boolean;
   includeAllItem?: boolean;
 }): React.ReactNode | null {
-  const { projects: myprojects } = useMyProjects();
+  const { projects: hookProjects } = useMyProjects();
+  const myprojects = props.projects ?? hookProjects;
   const includeAllItem = props.includeAllItem !== false;
   if (myprojects) {
     return (
       <List.Dropdown
         tooltip="Select Project"
+        value={props.value}
         storeValue={props.storeValue}
         onChange={(newValue) => {
           if (includeAllItem && newValue === "-") {

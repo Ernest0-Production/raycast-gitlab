@@ -83,8 +83,6 @@ export function getCIJobStatusIcon(status: string, allowFailure: boolean): Image
   */
 }
 
-const MR_PIPELINE_IN_PROGRESS = new Set(["running", "pending", "created", "preparing", "waiting_for_resource"]);
-
 const MR_PIPELINE_STATUS_LABELS: Record<string, string> = {
   success: "Pipeline Passed",
   failed: "Pipeline Failed",
@@ -101,60 +99,6 @@ const MR_PIPELINE_STATUS_LABELS: Record<string, string> = {
 
 export function getMRPipelineStatusTooltip(status: string): string {
   return MR_PIPELINE_STATUS_LABELS[status.toLowerCase()] ?? "Pipeline Status Unknown";
-}
-
-export function getMRPipelineStatusAccessoryIcon(status: string): Image.ImageLike {
-  const normalized = status.toLowerCase();
-  if (normalized === "success") {
-    return { source: Icon.Hammer, tintColor: Color.Green };
-  }
-  if (normalized === "failed") {
-    return { source: Icon.Hammer, tintColor: Color.Red };
-  }
-  if (MR_PIPELINE_IN_PROGRESS.has(normalized)) {
-    return { source: Icon.CircleProgress25, tintColor: Color.Blue };
-  }
-  return { source: Icon.Hammer, tintColor: Color.PrimaryText };
-}
-
-export function getCIJobStatusEmoji(status: string): string {
-  switch (status.toLowerCase()) {
-    case "success": {
-      return "✅";
-    }
-    case "created": {
-      return "🔨";
-    }
-    case "pending": {
-      return "⏰";
-    }
-    case "running": {
-      return "🔄";
-    }
-    case "failed": {
-      return "❌";
-    }
-    case "canceled": {
-      return "🛑";
-    }
-    case "skipped": {
-      return "➡️";
-    }
-    case "scheduled": {
-      return "🕐";
-    }
-    case "manual": {
-      return "👨‍💼";
-    }
-    default:
-      console.log(status);
-      return "💼";
-  }
-  /*
-  missing
-  * WAITING_FOR_RESOURCE
-  * PREPARING
-  */
 }
 
 function getStatusText(status: string, allowFailure: boolean) {

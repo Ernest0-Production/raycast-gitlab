@@ -3,7 +3,7 @@ import { gitlab } from "../common";
 import { MRDiscussion, MergeRequest } from "../gitlabapi";
 import { daysInSeconds } from "../utils";
 
-export interface MRDiscussionStats {
+interface MRDiscussionStats {
   resolved: number;
   resolvableTotal: number;
 }
@@ -26,7 +26,7 @@ function isDiscussionResolved(discussion: MRDiscussion): boolean {
   return resolvableNotes.every((n) => n.resolved);
 }
 
-export function countMRDiscussionStats(discussions: MRDiscussion[]): MRDiscussionStats {
+function countMRDiscussionStats(discussions: MRDiscussion[]): MRDiscussionStats {
   let resolved = 0;
   let resolvableTotal = 0;
   for (const discussion of discussions) {
@@ -43,6 +43,20 @@ export function countMRDiscussionStats(discussions: MRDiscussion[]): MRDiscussio
 
 export function formatMRDiscussionStatsLabel(stats: MRDiscussionStats): string {
   return `${stats.resolved}/${stats.resolvableTotal}`;
+}
+
+export function getMRDiscussionMetadataLabel(
+  mr: MergeRequest,
+  stats: MRDiscussionStats | undefined,
+): string | undefined {
+  const notesCount = mr.user_notes_count ?? 0;
+  if (stats && stats.resolvableTotal > 0) {
+    return formatMRDiscussionStatsLabel(stats);
+  }
+  if (notesCount > 0) {
+    return `${notesCount}`;
+  }
+  return undefined;
 }
 
 export function useMRDiscussionStats(mr: MergeRequest): {

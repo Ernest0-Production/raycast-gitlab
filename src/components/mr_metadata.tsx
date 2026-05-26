@@ -155,7 +155,25 @@ function MRDateLabels(props: {
       {props.mr.created_at ? <MRDateLabel title="Created" isoDate={props.mr.created_at} Label={props.Label} /> : null}
       {props.mr.updated_at ? <MRDateLabel title="Updated" isoDate={props.mr.updated_at} Label={props.Label} /> : null}
       {props.mr.merged_at ? <MRDateLabel title="Merged" isoDate={props.mr.merged_at} Label={props.Label} /> : null}
+      {props.mr.closed_at ? <MRDateLabel title="Closed" isoDate={props.mr.closed_at} Label={props.Label} /> : null}
     </>
+  );
+}
+
+function DiscussionsMetadataLabel(props: {
+  discussionLabel?: string;
+  Label: typeof Detail.Metadata.Label | typeof List.Item.Detail.Metadata.Label;
+}) {
+  if (!props.discussionLabel) {
+    return null;
+  }
+  const Label = props.Label;
+  return (
+    <Label
+      title="Discussions"
+      text={props.discussionLabel}
+      icon={{ source: Icon.SpeechBubble, tintColor: Color.PrimaryText }}
+    />
   );
 }
 
@@ -187,22 +205,16 @@ export function MRDetailMetadata(props: { mr: MergeRequest; discussionLabel?: st
         title={assigneesForPeopleSection(mr).length === 1 ? "Assignee" : "Assignees"}
         users={assigneesForPeopleSection(mr)}
       />
+      <DiscussionsMetadataLabel discussionLabel={props.discussionLabel} Label={Detail.Metadata.Label} />
       <UserDetailTagList title={mr.reviewers.length === 1 ? "Reviewer" : "Reviewers"} users={mr.reviewers} />
       <DetailMergeOptions mr={mr} />
       <Detail.Metadata.Separator />
-      {props.discussionLabel ? (
-        <Detail.Metadata.Label
-          title="Comments"
-          text={props.discussionLabel}
-          icon={{ source: Icon.SpeechBubble, tintColor: Color.PrimaryText }}
-        />
-      ) : null}
       <MRDateLabels mr={mr} Label={Detail.Metadata.Label} />
     </Detail.Metadata>
   );
 }
 
-export function MRListDetailMetadata(props: { mr: MergeRequest }) {
+export function MRListDetailMetadata(props: { mr: MergeRequest; discussionLabel?: string }) {
   const mr = props.mr;
   return (
     <List.Item.Detail.Metadata>
@@ -223,6 +235,7 @@ export function MRListDetailMetadata(props: { mr: MergeRequest }) {
         title={assigneesForPeopleSection(mr).length === 1 ? "Assignee" : "Assignees"}
         users={assigneesForPeopleSection(mr)}
       />
+      <DiscussionsMetadataLabel discussionLabel={props.discussionLabel} Label={List.Item.Detail.Metadata.Label} />
       <UserListDetailTagList title={mr.reviewers.length === 1 ? "Reviewer" : "Reviewers"} users={mr.reviewers} />
       <ListDetailMergeOptions mr={mr} />
       <List.Item.Detail.Metadata.Separator />

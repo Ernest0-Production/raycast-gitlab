@@ -1,5 +1,5 @@
-import { List } from "@raycast/api";
-import { useState } from "react";
+import { ActionPanel, List } from "@raycast/api";
+import { useMemo, useState } from "react";
 import { useCache } from "../cache";
 import { gitlab } from "../common";
 import { MergeRequest, Project } from "../gitlabapi";
@@ -13,7 +13,7 @@ import {
   mrSearchBarPlaceholder,
   useMRListDetails,
 } from "./mr";
-import { ActionPanel } from "@raycast/api";
+import { RefreshMergeRequestsAction } from "./mr_actions";
 import { MyProjectsDropdown } from "./project";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -37,6 +37,10 @@ function MyMRList(props: {
   };
 
   const { isShowingDetail, toggleListDetails } = useMRListDetails();
+  const refreshAction = useMemo(
+    () => <RefreshMergeRequestsAction onRefresh={props.performRefetch} />,
+    [props.performRefetch],
+  );
 
   return (
     <List
@@ -52,6 +56,7 @@ function MyMRList(props: {
           <ActionPanel.Section>
             <MRListDetailsToggleAction isShowingDetail={isShowingDetail} onToggle={toggleListDetails} />
           </ActionPanel.Section>
+          <ActionPanel.Section>{refreshAction}</ActionPanel.Section>
         </ActionPanel>
       }
     >
@@ -62,8 +67,10 @@ function MyMRList(props: {
             mr={mr}
             refreshData={refresh}
             showCIStatus={true}
+            showAuthor={false}
             isShowingDetail={isShowingDetail}
             onToggleListDetails={toggleListDetails}
+            refreshAction={refreshAction}
           />
         ))}
       </List.Section>

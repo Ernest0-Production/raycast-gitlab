@@ -70,22 +70,52 @@ function getStatusText(status: string) {
   }
 }
 
-function getDateStatus(pipeline: any): {
+function pipelineTimestamp(pipeline: Pipeline, field: "finished" | "started" | "created"): string | undefined {
+  if (field === "finished") {
+    return pipeline.finished_at || (pipeline as { finishedAt?: string }).finishedAt;
+  }
+  if (field === "started") {
+    return pipeline.started_at || (pipeline as { startedAt?: string }).startedAt;
+  }
+  return pipeline.created_at || (pipeline as { createdAt?: string }).createdAt;
+}
+
+export function normalizePipelineForList(data: Record<string, any>): Pipeline {
+  const pipeline = new Pipeline();
+  pipeline.id = data.id;
+  pipeline.iid = `${data.iid}`;
+  pipeline.projectId = `${data.project_id}`;
+  pipeline.status = data.status ?? "";
+  pipeline.ref = data.ref ?? "";
+  pipeline.sha = data.sha ?? "";
+  pipeline.webUrl = data.web_url ?? data.webUrl ?? "";
+  pipeline.created_at = data.created_at ?? data.createdAt ?? "";
+  pipeline.updated_at = data.updated_at ?? data.updatedAt ?? "";
+  pipeline.started_at = data.started_at ?? data.startedAt ?? "";
+  pipeline.finished_at = data.finished_at ?? data.finishedAt ?? "";
+  pipeline.duration = data.duration ?? 0;
+  return pipeline;
+}
+
+function getDateStatus(pipeline: Pipeline): {
   icon: Image.ImageLike | undefined;
   tooltip: string | undefined;
   date: Date | undefined;
 } {
-  if (pipeline.finishedAt) {
-    const d = new Date(pipeline.finishedAt);
+  const finishedAt = pipelineTimestamp(pipeline, "finished");
+  if (finishedAt) {
+    const d = new Date(finishedAt);
     const durationText = pipeline.duration ? `\nDuration: ${pipeline.duration} seconds` : "";
     return { icon: Icon.Calendar, tooltip: `Finished at ${d.toLocaleString()}${durationText}`, date: d };
   }
-  if (pipeline.startedAt) {
-    const d = new Date(pipeline.startedAt);
+  const startedAt = pipelineTimestamp(pipeline, "started");
+  if (startedAt) {
+    const d = new Date(startedAt);
     return { icon: Icon.WristWatch, tooltip: `Started at ${d.toLocaleString()}`, date: d };
   }
-  if (pipeline.createdAt) {
-    const d = new Date(pipeline.createdAt);
+  const createdAt = pipelineTimestamp(pipeline, "created");
+  if (createdAt) {
+    const d = new Date(createdAt);
     return { icon: Icon.Stop, tooltip: `Created at ${d.toLocaleString()}`, date: d };
   }
   return { icon: undefined, tooltip: undefined, date: undefined };
@@ -173,7 +203,7 @@ export function useSearch(
   query: string | undefined,
   projectFullPath: string,
 ): {
-  pipelines: any[];
+  pipelines: Pipeline[];
   error?: string;
   isLoading: boolean;
   refresh: () => void;
@@ -206,20 +236,21 @@ export function useSearch(
           variables: { fullPath: projectFullPath },
           fetchPolicy: "network-only",
         });
-        const glData: Record<string, any>[] = data.data.project.pipelines.nodes.map((p: any) => ({
-          id: getIdFromGqlId(p.id),
-          iid: `${p.iid}`,
-          projectId: getIdFromGqlId(p.project.id),
-          status: p.status,
-          active: p.active,
-          webUrl: `${getGitLabGQL().url}${p.path}`,
-          createdAt: p.createdAt,
-          updatedAt: p.updatedAt,
-          startedAt: p.startedAt,
-          duration: p.duration,
-          finishedAt: p.finishedAt,
-          ref: p.ref,
-        }));
+        const glData: Pipeline[] = data.data.project.pipelines.nodes.map((p: any) =>
+          normalizePipelineForList({
+            id: getIdFromGqlId(p.id),
+            iid: p.iid,
+            project_id: getIdFromGqlId(p.project.id),
+            status: p.status,
+            web_url: `${getGitLabGQL().url}${p.path}`,
+            created_at: p.createdAt,
+            updated_at: p.updatedAt,
+            started_at: p.startedAt,
+            duration: p.duration,
+            finished_at: p.finishedAt,
+            ref: p.ref,
+          }),
+        );
         if (!didUnmount) {
           setPipelines(glData);
         }

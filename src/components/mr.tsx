@@ -1,27 +1,24 @@
 import { ActionPanel, List, Color, Detail, Action, Image, Icon, Keyboard } from "@raycast/api";
-import { Group, MergeRequest, Project } from "../gitlabapi";
+import { getMRHeadPipelineStatus, Group, MergeRequest, Project } from "../gitlabapi";
 import { GitLabIcons } from "../icons";
 import { getGitLabGQL, gitlab } from "../common";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  daysInSeconds,
   getErrorMessage,
-  isNumber,
   now,
   optimizeMarkdownText,
   Query,
   showErrorToast,
   tokenizeQueryText,
 } from "../utils";
-import { formatMRDiscussionStatsLabel, useMRDiscussionStats } from "./mr_discussions";
+import { getMRDiscussionMetadataLabel, useMRDiscussionStats } from "./mr_discussions";
 import { getMRStateListIcon } from "./mr_status";
 import { gql } from "@apollo/client";
-import { MRItemActions, MRTodoAndCopySection, ShowMRCommitsAction } from "./mr_actions";
+import { MRItemActions, MRTodoAndCopySection, ShowMRCommitsAction, ShowMRPipelinesAction } from "./mr_actions";
 import { GitLabOpenInBrowserAction } from "./actions";
-import { getMRPipelineStatusAccessoryIcon, getMRPipelineStatusTooltip } from "./jobs";
-import { useCache } from "../cache";
+import { getCIJobStatusIcon, getMRPipelineStatusTooltip } from "./jobs";
 import { MRDetailMetadata, MRListDetailMetadata } from "./mr_metadata";
-import { useCachedPromise, useCachedState } from "@raycast/utils";
+import { useCachedState } from "@raycast/utils";
 import { CacheActionPanelSection } from "./cache_actions";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -46,9 +43,10 @@ export const mrSearchBarPlaceholder = "Search by title, description, author, id"
 
 export function useMRListDetails(): { isShowingDetail: boolean; toggleListDetails: () => void } {
   const [isShowingDetail, setIsShowingDetail] = useCachedState("mr-list-details", false);
+  const toggleListDetails = useCallback(() => setIsShowingDetail((current) => !current), [setIsShowingDetail]);
   return {
     isShowingDetail,
-    toggleListDetails: () => setIsShowingDetail(!isShowingDetail),
+    toggleListDetails,
   };
 }
 
@@ -100,13 +98,7 @@ export function MRDetail(props: { mr: MergeRequest }) {
     showErrorToast(error, "Could not get Merge Request Details");
   }
 
-  const notesCount = mr.user_notes_count ?? 0;
-  const discussionLabel =
-    discussionStats && discussionStats.resolvableTotal > 0
-      ? formatMRDiscussionStatsLabel(discussionStats)
-      : notesCount > 0
-        ? `${notesCount}`
-        : undefined;
+  const discussionLabel = getMRDiscussionMetadataLabel(mr, discussionStats);
 
   const desc = (mrdetail?.description ? mrdetail.description : props.mr.description) || "";
 
@@ -128,6 +120,7 @@ export function MRDetail(props: { mr: MergeRequest }) {
           <ActionPanel.Section>
             <GitLabOpenInBrowserAction url={props.mr.web_url} />
             <ShowMRCommitsAction mr={props.mr} />
+            <ShowMRPipelinesAction mr={props.mr} />
           </ActionPanel.Section>
           <MRTodoAndCopySection mr={props.mr} />
           <MRItemActions mr={props.mr} />
@@ -141,9 +134,12 @@ export function MRDetail(props: { mr: MergeRequest }) {
 export function MRListDetail(props: { mr: MergeRequest }) {
   const mr = props.mr;
   const { mrdetail, error, isLoading } = useDetail(props.mr.id);
+  const { stats: discussionStats } = useMRDiscussionStats(mr);
   if (error) {
     showErrorToast(error, "Could not get Merge Request Details");
   }
+
+  const discussionLabel = getMRDiscussionMetadataLabel(mr, discussionStats);
 
   const lines: string[] = [];
   lines.push(`# ${mr.title}`);
@@ -152,7 +148,11 @@ export function MRListDetail(props: { mr: MergeRequest }) {
   lines.push(optimizeMarkdownText(desc, mrdetail?.projectWebUrl));
 
   return (
-    <List.Item.Detail markdown={lines.join("\n")} isLoading={isLoading} metadata={<MRListDetailMetadata mr={mr} />} />
+    <List.Item.Detail
+      markdown={lines.join("\n")}
+      isLoading={isLoading}
+      metadata={<MRListDetailMetadata mr={mr} discussionLabel={discussionLabel} />}
+    />
   );
 }
 
@@ -283,22 +283,7 @@ export function MRList({
 }
 
 export function MRListEmptyView() {
-  return (
-    <List.EmptyView
-      title="No Merge Requests"
-      icon={{ source: GitLabIcons.merge_request, tintColor: Color.PrimaryText }}
-    />
-  );
-}
-
-function mrNotesListAccessory(notesCount: number): { text: string; tooltip: string } | undefined {
-  if (notesCount <= 0) {
-    return undefined;
-  }
-  return {
-    text: `${notesCount}`,
-    tooltip: `${notesCount} ${notesCount === 1 ? "Comment" : "Comments"}`,
-  };
+  return <List.EmptyView title="No Merge Requests" />;
 }
 
 export function MRListItem(props: {
@@ -307,52 +292,30 @@ export function MRListItem(props: {
   isShowingDetail: boolean;
   onToggleListDetails: () => void;
   showCIStatus?: boolean;
+  showAuthor?: boolean;
   filterAction?: React.ReactNode;
+  sortAction?: React.ReactNode;
+  refreshAction?: React.ReactNode;
 }) {
   const mr = props.mr;
+  if (!mr) {
+    return null;
+  }
   const { isShowingDetail, onToggleListDetails: toggleListDetails } = props;
 
-  const { data: approval } = useCachedPromise(
-    async (proID, mrIID) => {
-      const approval = await gitlab.getMergeRequestsApprovalsFromProjectMR({ projectID: proID, mrIID: mrIID });
-      return approval;
-    },
-    [mr.project_id, mr.iid],
-  );
-
   const icon = getMRStateListIcon(mr.state);
-  const accessoryIcon: Image.ImageLike | undefined = { source: mr.author?.avatar_url || "", mask: Image.Mask.Circle };
+  const showAuthor = props.showAuthor !== false;
+  const accessoryIcon: Image.ImageLike | undefined = showAuthor
+    ? { source: mr.author?.avatar_url || "", mask: Image.Mask.Circle }
+    : undefined;
 
   const showCIStatus = props.showCIStatus === undefined || props.showCIStatus === true;
-  const { mrpipelines } = useMRPipelines(mr);
-  const pipelineStatus = showCIStatus && mrpipelines && mrpipelines.length > 0 ? mrpipelines[0].status : undefined;
-  const notesCount = mr.user_notes_count ?? 0;
-  const commentsAccessory = mrNotesListAccessory(notesCount);
-
+  const pipelineStatus = showCIStatus && !mr.has_conflicts ? getMRHeadPipelineStatus(mr) : undefined;
   const accessories: List.Item.Accessory[] = [];
   if (!isShowingDetail) {
-    if (approval) {
-      const approvalsRequired = approval.approvals_required;
-      const approvalsLeft = approval.approvals_left;
-      const hasApprovalRules = isNumber(approvalsLeft) && isNumber(approvalsRequired) && approvalsRequired > 0;
-
-      if (hasApprovalRules) {
-        const approvedCount = approvalsRequired - approvalsLeft;
-        const fullyApproved = approvalsLeft === 0;
-        accessories.push({
-          icon: {
-            source: Icon.ThumbsUpFilled,
-            tintColor: fullyApproved ? Color.Green : undefined,
-          },
-          text: `${approvedCount}/${approvalsRequired}`,
-          tooltip: fullyApproved ? "Fully Approved" : `${approvedCount} of ${approvalsRequired} Approvals`,
-        });
-      }
-    }
-
     if (pipelineStatus) {
       accessories.push({
-        icon: getMRPipelineStatusAccessoryIcon(pipelineStatus),
+        icon: getCIJobStatusIcon(pipelineStatus, false),
         tooltip: getMRPipelineStatusTooltip(pipelineStatus),
       });
     }
@@ -361,11 +324,6 @@ export function MRListItem(props: {
       {
         icon: mr.merge_when_pipeline_succeeds && mr.state === "opened" ? Icon.Rewind : undefined,
         tooltip: mr.merge_when_pipeline_succeeds && mr.state === "opened" ? "Auto Merge" : undefined,
-      },
-      {
-        icon: commentsAccessory ? Icon.SpeechBubble : undefined,
-        text: commentsAccessory?.text,
-        tooltip: commentsAccessory?.tooltip,
       },
       ...(mr.has_conflicts
         ? [
@@ -379,7 +337,9 @@ export function MRListItem(props: {
       ...(mr.milestone?.title ? [{ tag: mr.milestone.title, tooltip: "Milestone" }] : []),
     );
   }
-  accessories.push({ icon: accessoryIcon, tooltip: mr.author?.name });
+  if (showAuthor && accessoryIcon) {
+    accessories.push({ icon: accessoryIcon, tooltip: mr.author?.name });
+  }
 
   const showDetailsIcon = { source: Icon.ArrowRight, tintColor: Color.PrimaryText };
 
@@ -387,7 +347,7 @@ export function MRListItem(props: {
     <List.Item
       id={mr.id.toString()}
       title={mr.title}
-      subtitle={mr.author?.name}
+      subtitle={showAuthor && !isShowingDetail ? mr.author?.name : undefined}
       icon={icon}
       accessories={accessories}
       detail={isShowingDetail && <MRListDetail mr={mr} />}
@@ -397,11 +357,18 @@ export function MRListItem(props: {
             <Action.Push icon={showDetailsIcon} title="Show Details" target={<MRDetail mr={mr} />} />
             <GitLabOpenInBrowserAction url={mr.web_url} />
             <ShowMRCommitsAction mr={mr} />
+            <ShowMRPipelinesAction mr={mr} />
             <MRListDetailsToggleAction isShowingDetail={isShowingDetail} onToggle={toggleListDetails} />
           </ActionPanel.Section>
           <MRTodoAndCopySection shortcut={{ modifiers: ["cmd"], key: "t" }} mr={mr} finished={props.refreshData} />
           <MRItemActions mr={mr} onDataChange={props.refreshData} />
-          {props.filterAction ? <ActionPanel.Section title="Filter">{props.filterAction}</ActionPanel.Section> : null}
+          {props.filterAction || props.sortAction || props.refreshAction ? (
+            <ActionPanel.Section>
+              {props.filterAction}
+              {props.sortAction}
+              {props.refreshAction}
+            </ActionPanel.Section>
+          ) : null}
           <CacheActionPanelSection />
         </ActionPanel>
       }
@@ -633,43 +600,4 @@ export function useMR(
   }, [projectID, mrID]);
 
   return { mr, error, isLoading };
-}
-
-interface MRPipeline {
-  id: number;
-  sha: string;
-  ref: string;
-  status: string;
-}
-
-export function useMRPipelines(mr: MergeRequest): {
-  mrpipelines: MRPipeline[] | undefined;
-  isLoading: boolean | undefined;
-  error: string | undefined;
-  performRefetch: () => void;
-} {
-  const {
-    data: mrpipelines,
-    isLoading,
-    error,
-    performRefetch,
-  } = useCache<MRPipeline[] | undefined>(
-    `mrpipelines_${mr.project_id}_${mr.iid}`,
-    async (): Promise<MRPipeline[] | undefined> => {
-      const result: MRPipeline[] | undefined = await gitlab
-        .fetch(`projects/${mr.project_id}/merge_requests/${mr.iid}/pipelines`)
-        .then((data) => {
-          return data?.map((m: any) => {
-            return m as MRPipeline;
-          });
-        });
-      return result;
-    },
-    {
-      deps: [mr],
-      secondsToRefetch: 10,
-      secondsToInvalid: daysInSeconds(7),
-    },
-  );
-  return { mrpipelines, isLoading, error, performRefetch };
 }

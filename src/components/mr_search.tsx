@@ -1,6 +1,6 @@
 import { Action, ActionPanel, Color, Icon, List } from "@raycast/api";
 import { useCachedState } from "@raycast/utils";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCache } from "../cache";
 import { gitlab } from "../common";
 import { MergeRequest, Project } from "../gitlabapi";
@@ -16,22 +16,43 @@ import {
   injectMRQueryNamedParameters,
   useMRListDetails,
 } from "./mr";
+import { RefreshMergeRequestsAction } from "./mr_actions";
+import { appendMROrderByParams, mergeRequestSortSubmenu, MR_DEFAULT_ORDER_BY, MRSearchOrderBy } from "./mr_sort";
 import { mrStateFilterIcon } from "./mr_status";
 import { MyProjectsDropdown, useMyProjects } from "./project";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-function partitionMrsByAuthor(mrs: MergeRequest[], userId: number) {
+function partitionSearchMrs(mrs: MergeRequest[], userId: number) {
   const createdByMe: MergeRequest[] = [];
+  const assignedToReview: MergeRequest[] = [];
   const other: MergeRequest[] = [];
   for (const m of mrs) {
     if (m.author?.id === userId) {
       createdByMe.push(m);
+    } else if (m.reviewers?.some((reviewer) => reviewer.id === userId)) {
+      assignedToReview.push(m);
     } else {
       other.push(m);
     }
   }
-  return { createdByMe, other };
+  return { createdByMe, assignedToReview, other };
+}
+
+function mergeRequestFilterAndSortSection(
+  mrState: MRState,
+  onSelectState: (state: MRState) => void,
+  orderBy: MRSearchOrderBy,
+  onSelectOrderBy: (orderBy: MRSearchOrderBy) => void,
+  onRefresh: () => void,
+) {
+  return (
+    <ActionPanel.Section>
+      {mergeRequestStateFilterSubmenu(mrState, onSelectState)}
+      {mergeRequestSortSubmenu(orderBy, onSelectOrderBy)}
+      <RefreshMergeRequestsAction onRefresh={onRefresh} />
+    </ActionPanel.Section>
+  );
 }
 
 function mergeRequestStateFilterSubmenu(mrState: MRState, onSelectState: (state: MRState) => void) {
@@ -69,21 +90,27 @@ function mergeRequestStateFilterSubmenu(mrState: MRState, onSelectState: (state:
 function SearchMergeRequestsEmptyView(props: {
   mrState: MRState;
   onSelectState: (state: MRState) => void;
+  orderBy: MRSearchOrderBy;
+  onSelectOrderBy: (orderBy: MRSearchOrderBy) => void;
+  onRefresh: () => void;
   isShowingDetail: boolean;
   onToggleListDetails: () => void;
 }) {
   return (
     <List.EmptyView
       title="No Merge Requests"
-      icon={{ source: GitLabIcons.merge_request, tintColor: Color.PrimaryText }}
       actions={
         <ActionPanel>
           <ActionPanel.Section>
             <MRListDetailsToggleAction isShowingDetail={props.isShowingDetail} onToggle={props.onToggleListDetails} />
           </ActionPanel.Section>
-          <ActionPanel.Section title="Filter">
-            {mergeRequestStateFilterSubmenu(props.mrState, props.onSelectState)}
-          </ActionPanel.Section>
+          {mergeRequestFilterAndSortSection(
+            props.mrState,
+            props.onSelectState,
+            props.orderBy,
+            props.onSelectOrderBy,
+            props.onRefresh,
+          )}
         </ActionPanel>
       }
     />
@@ -91,9 +118,10 @@ function SearchMergeRequestsEmptyView(props: {
 }
 
 export function SearchMyMergeRequests() {
-  const [projectId, setProjectId] = useState<string | undefined>();
+  const [projectId, setProjectId] = useCachedState<string | undefined>("mr-search-project-id", undefined);
   const { projects: myprojects, isLoading: projectsLoading, error: projectsError } = useMyProjects();
   const [mrState, setMrState] = useCachedState<MRState>("mr-search-state", MRState.opened);
+  const [orderBy, setOrderBy] = useCachedState<MRSearchOrderBy>("mr-search-order-by", MR_DEFAULT_ORDER_BY);
   const scope = MRScope.all;
   const [search, setSearch] = useState<string>();
   const [userId, setUserId] = useState<number | undefined>();
@@ -106,11 +134,11 @@ export function SearchMyMergeRequests() {
   }, []);
 
   useEffect(() => {
-    if (!myprojects?.length || projectId) {
+    if (!myprojects?.length || projectId !== undefined) {
       return;
     }
     setProjectId(`${myprojects[0].id}`);
-  }, [myprojects, projectId]);
+  }, [myprojects, projectId, setProjectId]);
 
   useEffect(() => {
     if (!projectsError) {
@@ -119,12 +147,16 @@ export function SearchMyMergeRequests() {
     showErrorToast(getErrorMessage(projectsError), "Could not fetch Projects");
   }, [projectsError]);
 
-  const params: Record<string, any> = { state: mrState, scope };
-  const qd = getMRQuery(search);
-  params.search = qd.query || "";
-  injectMRQueryNamedParameters(params, qd, scope, false);
-  injectMRQueryNamedParameters(params, qd, scope, true);
-  const paramsHash = hashRecord(params);
+  const params = useMemo(() => {
+    const requestParams: Record<string, any> = { state: mrState, scope };
+    appendMROrderByParams(requestParams, orderBy);
+    const qd = getMRQuery(search);
+    requestParams.search = qd.query || "";
+    injectMRQueryNamedParameters(requestParams, qd, scope, false);
+    injectMRQueryNamedParameters(requestParams, qd, scope, true);
+    return requestParams;
+  }, [mrState, scope, orderBy, search]);
+  const paramsHash = useMemo(() => hashRecord(params), [params]);
   const { data, isLoading, error, performRefetch } = useCache<MergeRequest[] | undefined>(
     project ? `mymrssearch_${project.id}_${paramsHash}` : "mymrssearch_no_project",
     async (): Promise<MergeRequest[] | undefined> => {
@@ -134,8 +166,8 @@ export function SearchMyMergeRequests() {
       return await gitlab.getMergeRequests(params, project);
     },
     {
-      deps: [project?.id, search, mrState],
-      secondsToRefetch: 1,
+      deps: [project?.id, search, mrState, orderBy],
+      secondsToRefetch: 60,
       secondsToInvalid: daysInSeconds(7),
     },
   );
@@ -147,12 +179,53 @@ export function SearchMyMergeRequests() {
     showErrorToast(getErrorMessage(error), "Could not fetch Merge Requests");
   }, [error]);
 
-  const { createdByMe, other } = useMemo(() => {
+  const { createdByMe, assignedToReview, other } = useMemo(() => {
     if (!data || userId === undefined) {
-      return { createdByMe: [], other: [] };
+      return { createdByMe: [], assignedToReview: [], other: [] };
     }
-    return partitionMrsByAuthor(data, userId);
+    return partitionSearchMrs(data, userId);
   }, [data, userId]);
+
+  const filterAction = useMemo(() => mergeRequestStateFilterSubmenu(mrState, setMrState), [mrState, setMrState]);
+  const sortAction = useMemo(() => mergeRequestSortSubmenu(orderBy, setOrderBy), [orderBy, setOrderBy]);
+  const refreshAction = useMemo(() => <RefreshMergeRequestsAction onRefresh={performRefetch} />, [performRefetch]);
+  const filterSortSection = useMemo(
+    () => mergeRequestFilterAndSortSection(mrState, setMrState, orderBy, setOrderBy, performRefetch),
+    [mrState, setMrState, orderBy, setOrderBy, performRefetch],
+  );
+
+  const listFilterActions = useMemo(
+    () => (
+      <ActionPanel>
+        <ActionPanel.Section>
+          <MRListDetailsToggleAction isShowingDetail={isShowingDetail} onToggle={toggleListDetails} />
+        </ActionPanel.Section>
+        {filterSortSection}
+      </ActionPanel>
+    ),
+    [isShowingDetail, toggleListDetails, filterSortSection],
+  );
+
+  const onProjectChange = useCallback(
+    (pro: Project | undefined) => {
+      const nextId = pro ? `${pro.id}` : undefined;
+      setProjectId((current) => (current === nextId ? current : nextId));
+    },
+    [setProjectId],
+  );
+
+  const searchBarAccessory = useMemo(
+    () => (
+      <MyProjectsDropdown
+        projects={myprojects}
+        value={projectId}
+        includeAllItem={false}
+        onChange={onProjectChange}
+        storeValue
+      />
+    ),
+    [myprojects, projectId, onProjectChange],
+  );
 
   if (projectsLoading || isLoading === undefined) {
     return <List isLoading={true} searchBarPlaceholder={mrSearchBarPlaceholder} />;
@@ -174,19 +247,6 @@ export function SearchMyMergeRequests() {
     return <List isLoading={true} searchBarPlaceholder={mrSearchBarPlaceholder} />;
   }
 
-  const listFilterActions = (
-    <ActionPanel>
-      <ActionPanel.Section>
-        <MRListDetailsToggleAction isShowingDetail={isShowingDetail} onToggle={toggleListDetails} />
-      </ActionPanel.Section>
-      <ActionPanel.Section title="Filter">{mergeRequestStateFilterSubmenu(mrState, setMrState)}</ActionPanel.Section>
-    </ActionPanel>
-  );
-
-  const onProjectChange = (pro: Project | undefined) => {
-    setProjectId(pro ? `${pro.id}` : undefined);
-  };
-
   const renderMrs = (mrs: MergeRequest[]) =>
     mrs.map((m) => (
       <MRListItem
@@ -196,7 +256,9 @@ export function SearchMyMergeRequests() {
         showCIStatus={true}
         isShowingDetail={isShowingDetail}
         onToggleListDetails={toggleListDetails}
-        filterAction={mergeRequestStateFilterSubmenu(mrState, setMrState)}
+        filterAction={filterAction}
+        sortAction={sortAction}
+        refreshAction={refreshAction}
       />
     ));
 
@@ -208,12 +270,17 @@ export function SearchMyMergeRequests() {
       searchBarPlaceholder={mrSearchBarPlaceholder}
       isShowingDetail={isShowingDetail}
       throttle
-      searchBarAccessory={<MyProjectsDropdown includeAllItem={false} onChange={onProjectChange} storeValue />}
+      searchBarAccessory={searchBarAccessory}
       actions={listFilterActions}
     >
       {createdByMe.length > 0 ? (
         <List.Section title="Created by me" subtitle={`${createdByMe.length}`}>
           {renderMrs(createdByMe)}
+        </List.Section>
+      ) : null}
+      {assignedToReview.length > 0 ? (
+        <List.Section title="Assigned to Review" subtitle={`${assignedToReview.length}`}>
+          {renderMrs(assignedToReview)}
         </List.Section>
       ) : null}
       <List.Section title="Other" subtitle={`${other.length}`}>
@@ -222,6 +289,9 @@ export function SearchMyMergeRequests() {
       <SearchMergeRequestsEmptyView
         mrState={mrState}
         onSelectState={setMrState}
+        orderBy={orderBy}
+        onSelectOrderBy={setOrderBy}
+        onRefresh={performRefetch}
         isShowingDetail={isShowingDetail}
         onToggleListDetails={toggleListDetails}
       />
