@@ -575,6 +575,31 @@ export class GitLab {
     }
   }
 
+  public jobTraceDownloadUrl(projectId: number | string, jobId: number | string): string {
+    return `${this.url}/api/v4/projects/${projectId}/jobs/${jobId}/trace`;
+  }
+
+  public jobArtifactsArchiveDownloadUrl(projectId: number | string, jobId: number | string): string {
+    return `${this.url}/api/v4/projects/${projectId}/jobs/${jobId}/artifacts`;
+  }
+
+  public jobArtifactDownloadUrl(projectId: number | string, jobId: number | string, artifactPath: string): string {
+    const encodedPath = artifactPath
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
+    return `${this.url}/api/v4/projects/${projectId}/jobs/${jobId}/artifacts/${encodedPath}`;
+  }
+
+  public async downloadJobArtifact(
+    projectId: number | string,
+    jobId: number | string,
+    artifactPath: string,
+    localFilepath: string,
+  ): Promise<string> {
+    return this.downloadFile(this.jobArtifactDownloadUrl(projectId, jobId, artifactPath), { localFilepath });
+  }
+
   public async downloadFile(url: string, params: { localFilepath: string }): Promise<string> {
     logAPI(`download ${url}`);
     const fetcher = this.getFetcher();

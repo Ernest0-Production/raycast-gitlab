@@ -11,7 +11,12 @@ import {
   showErrorToast,
 } from "../utils";
 import { JobList } from "./jobs";
-import { PipelineItemActions } from "./pipeline_actions";
+import {
+  CancelPipelineAction,
+  isCancelablePipeline,
+  PipelineItemActions,
+  RetryPipelineAction,
+} from "./pipeline_actions";
 import useInterval from "use-interval";
 import { GitLabOpenInBrowserAction } from "./actions";
 import { GitLabIcons } from "../icons";
@@ -166,9 +171,13 @@ export function PipelineListItem(props: {
               icon={{ source: Icon.Terminal, tintColor: Color.PrimaryText }}
             />
             <GitLabOpenInBrowserAction url={pipeline.webUrl} />
+            <RetryPipelineAction pipeline={props.pipeline} onRetryFinished={props.onRefreshPipelines} />
+            {isCancelablePipeline(pipeline) ? (
+              <CancelPipelineAction pipeline={props.pipeline} onRefreshPipelines={props.onRefreshPipelines} />
+            ) : null}
           </ActionPanel.Section>
           <ActionPanel.Section>
-            <PipelineItemActions pipeline={props.pipeline} />
+            <PipelineItemActions pipeline={props.pipeline} onRefreshPipelines={props.onRefreshPipelines} />
           </ActionPanel.Section>
         </ActionPanel>
       }

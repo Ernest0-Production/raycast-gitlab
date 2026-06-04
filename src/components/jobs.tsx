@@ -3,11 +3,24 @@ import { useEffect, useState } from "react";
 import { getCIRefreshInterval, getGitLabGQL, gitlab } from "../common";
 import { gql } from "@apollo/client";
 import { getErrorMessage, getIdFromGqlId, now, showErrorToast } from "../utils";
-import { RefreshJobsAction, RetryJobAction } from "./job_actions";
+import {
+  CancelJobAction,
+  DownloadJobArtifactsSubmenu,
+  RefreshJobsAction,
+  RetryJobAction,
+  RunJobAction,
+} from "./job_actions";
 import useInterval from "use-interval";
 import { GitLabOpenInBrowserAction } from "./actions";
 import { Project } from "../gitlabapi";
 import { GitLabIcons } from "../icons";
+
+export interface JobArtifact {
+  file_type: string;
+  size?: number;
+  filename?: string;
+  file_format?: string;
+}
 
 export interface Job {
   id: string;
@@ -15,6 +28,7 @@ export interface Job {
   name: string;
   status: string;
   allowFailure: boolean;
+  artifacts: JobArtifact[];
 }
 
 const GET_PIPELINE_JOBS = gql`
@@ -72,6 +86,9 @@ export function getCIJobStatusIcon(status: string, allowFailure: boolean): Image
     case "scheduled": {
       return { source: GitLabIcons.status_scheduled, tintColor: Color.Blue };
     }
+    case "manual": {
+      return { source: Icon.Gear, tintColor: Color.Blue };
+    }
     default:
       return { source: Icon.ExclamationMark, tintColor: Color.Magenta };
   }
@@ -79,8 +96,26 @@ export function getCIJobStatusIcon(status: string, allowFailure: boolean): Image
   missing
   * WAITING_FOR_RESOURCE
   * PREPARING
-  * MANUAL
   */
+}
+
+export function isManualJob(job: Job): boolean {
+  return job.status.toLowerCase() === "manual";
+}
+
+export function isCancelableJob(job: Job): boolean {
+  switch (job.status.toLowerCase()) {
+    case "created":
+    case "pending":
+    case "running":
+    case "preparing":
+    case "waiting_for_resource":
+    case "scheduled":
+    case "manual":
+      return true;
+    default:
+      return false;
+  }
 }
 
 const MR_PIPELINE_STATUS_LABELS: Record<string, string> = {
@@ -120,20 +155,22 @@ export function JobListItem(props: { job: Job; projectFullPath: string; onRefres
   return (
     <List.Item
       id={job.id}
-      icon={icon}
+      icon={{ value: icon, tooltip: status }}
       title={job.name}
       subtitle={subtitle}
-      accessories={[{ text: status }]}
       actions={
         <ActionPanel>
           <ActionPanel.Section>
             <GitLabOpenInBrowserAction
               url={getGitLabGQL().urlJoin(`${props.projectFullPath}/-/jobs/${getIdFromGqlId(job.id)}`)}
             />
+            <RetryJobAction job={props.job} />
+            {isManualJob(job) ? <RunJobAction job={props.job} onRefreshJobs={props.onRefreshJobs} /> : null}
+            {isCancelableJob(job) ? <CancelJobAction job={props.job} onRefreshJobs={props.onRefreshJobs} /> : null}
+            {job.artifacts.length > 0 ? <DownloadJobArtifactsSubmenu job={props.job} /> : null}
           </ActionPanel.Section>
           <ActionPanel.Section>
             <RefreshJobsAction onRefreshJobs={props.onRefreshJobs} />
-            <RetryJobAction job={props.job} />
           </ActionPanel.Section>
         </ActionPanel>
       }
@@ -182,6 +219,19 @@ interface RESTJob {
   stage: string;
   name: string;
   allowFailure: boolean;
+  artifacts?: JobArtifact[];
+}
+
+function jobArtifactsFromJson(artifacts: JobArtifact[] | undefined): JobArtifact[] {
+  if (!artifacts?.length) {
+    return [];
+  }
+  return artifacts.map((artifact) => ({
+    file_type: artifact.file_type,
+    size: artifact.size,
+    filename: artifact.filename,
+    file_format: artifact.file_format,
+  }));
 }
 
 export function useSearch(
@@ -218,7 +268,30 @@ export function useSearch(
       setError(undefined);
 
       try {
-        if (pipelineIID) {
+        if (pipelineID) {
+          const projectUE = encodeURIComponent(projectFullPath);
+          const jobs: RESTJob[] = await gitlab
+            .fetch(`projects/${projectUE}/pipelines/${pipelineID}/jobs`)
+            .then((data) => data as RESTJob[]);
+          jobs.sort((a, b) => a.id - b.id);
+          const stages: Record<string, Job[]> = {};
+          for (const job of jobs) {
+            if (!stages[job.stage]) {
+              stages[job.stage] = [];
+            }
+            stages[job.stage].push({
+              id: `${job.id}`,
+              projectId: job.pipeline.project_id,
+              name: job.name,
+              status: job.status,
+              allowFailure: job.allowFailure,
+              artifacts: jobArtifactsFromJson(job.artifacts),
+            });
+          }
+          if (!didUnmount) {
+            setStages(stages);
+          }
+        } else if (pipelineIID) {
           const data = await getGitLabGQL().client.query({
             query: GET_PIPELINE_JOBS,
             variables: { fullPath: projectFullPath, pipelineIID: pipelineIID },
@@ -236,30 +309,9 @@ export function useSearch(
                 name: job.name,
                 status: job.status,
                 allowFailure: job.allowFailure,
+                artifacts: [],
               });
             }
-          }
-          if (!didUnmount) {
-            setStages(stages);
-          }
-        } else if (pipelineID) {
-          const projectUE = encodeURIComponent(projectFullPath);
-          const jobs: RESTJob[] = await gitlab
-            .fetch(`projects/${projectUE}/pipelines/${pipelineID}/jobs`)
-            .then((data) => data as RESTJob[]);
-          jobs.sort((a, b) => a.id - b.id);
-          const stages: Record<string, Job[]> = {};
-          for (const job of jobs) {
-            if (!stages[job.stage]) {
-              stages[job.stage] = [];
-            }
-            stages[job.stage].push({
-              id: `${job.id}`,
-              projectId: job.pipeline.project_id,
-              name: job.name,
-              status: job.status,
-              allowFailure: job.allowFailure,
-            });
           }
           if (!didUnmount) {
             setStages(stages);
@@ -281,7 +333,7 @@ export function useSearch(
     return () => {
       didUnmount = true;
     };
-  }, [query, projectFullPath, pipelineIID, timestamp]);
+  }, [query, projectFullPath, pipelineID, pipelineIID, timestamp]);
 
   return { stages, error, isLoading, refresh };
 }

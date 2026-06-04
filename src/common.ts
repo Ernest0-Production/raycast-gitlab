@@ -2,6 +2,8 @@ import { ApolloClient, ApolloLink, HttpLink, InMemoryCache, concat, NormalizedCa
 import fetch from "node-fetch";
 
 import { getPreferenceValues } from "@raycast/api";
+import os from "os";
+import path from "path";
 import { getHttpAgent, GitLab } from "./gitlabapi";
 
 let gitlabClient: GitLab | undefined;
@@ -127,4 +129,16 @@ export function getPreferPopToRootPreference(): boolean {
 export function getExcludeTodoAuthorUsernamesPreference(): string[] {
   const pref = getPreferenceValues();
   return pref.excludeTodoAuthorUsernames?.split(",").map((u: string) => u.trim()) || [];
+}
+
+export function getArtifactDownloadDirectoryPreference(): string {
+  const pref = getPreferenceValues();
+  const val = ((pref.artifactDownloadDirectory as string) || "").trim();
+  if (!val) {
+    return path.join(os.homedir(), "Downloads");
+  }
+  if (val.startsWith("~/")) {
+    return path.join(os.homedir(), val.slice(2));
+  }
+  return val;
 }

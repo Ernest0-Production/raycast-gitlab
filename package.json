@@ -324,6 +324,14 @@
       "placeholder": "10"
     },
     {
+      "name": "artifactDownloadDirectory",
+      "type": "textfield",
+      "required": false,
+      "title": "Job Artifacts Download Directory",
+      "description": "Folder for downloaded CI job artifacts. Defaults to ~/Downloads when empty.",
+      "placeholder": "~/Downloads"
+    },
+    {
       "name": "primaryaction",
       "type": "dropdown",
       "title": "Preferred Primary Action",
