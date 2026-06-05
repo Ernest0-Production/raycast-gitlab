@@ -1,6 +1,6 @@
 import { Action, ActionPanel, Color, Icon, List } from "@raycast/api";
 import { GitLabIcons } from "../../icons";
-import { copyShortcut, formatDate } from "../../utils";
+import { copySecondaryShortcut, copyShortcut, formatDate } from "../../utils";
 import { GitLabOpenInBrowserAction } from "../actions";
 import { Commit } from "./types";
 
@@ -22,19 +22,19 @@ export function CommitListItem(props: { commit: Commit }) {
         <ActionPanel>
           <ActionPanel.Section>
             <GitLabOpenInBrowserAction url={commit.web_url} />
-            <ActionPanel.Submenu title="Copy" icon={Icon.Clipboard} shortcut={copyShortcut}>
-              <Action.CopyToClipboard
-                // eslint-disable-next-line @raycast/prefer-title-case
-                title="SHA"
-                content={commit.id}
-                icon={{ source: Icon.Hashtag, tintColor: Color.PrimaryText }}
-              />
-              <Action.CopyToClipboard
-                title="URL"
-                content={commit.web_url}
-                icon={{ source: Icon.Link, tintColor: Color.PrimaryText }}
-              />
-            </ActionPanel.Submenu>
+            <Action.CopyToClipboard
+              title="Copy URL"
+              content={commit.web_url}
+              shortcut={copyShortcut}
+              icon={{ source: Icon.Link, tintColor: Color.PrimaryText }}
+            />
+            <Action.CopyToClipboard
+              // eslint-disable-next-line @raycast/prefer-title-case
+              title="Copy SHA"
+              content={commit.id}
+              shortcut={copySecondaryShortcut}
+              icon={{ source: Icon.Hashtag, tintColor: Color.PrimaryText }}
+            />
           </ActionPanel.Section>
         </ActionPanel>
       }

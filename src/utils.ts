@@ -14,6 +14,7 @@ TimeAgo.addDefaultLocale(en);
 const timeAgo = new TimeAgo("en-US");
 
 export const copyShortcut: Keyboard.Shortcut = { modifiers: ["cmd"], key: "." };
+export const copySecondaryShortcut: Keyboard.Shortcut = { modifiers: ["cmd", "shift"], key: "." };
 export const copyMarkdownShortcut: Keyboard.Shortcut = { modifiers: ["cmd", "ctrl"], key: "." };
 
 export function projectIconUrl(project: Project): string | undefined {
