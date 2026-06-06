@@ -258,15 +258,6 @@ function parseHeadPipelineFromJson(
   return headPipelineFromPipelineJson(mr.head_pipeline ?? mr.pipeline);
 }
 
-function applyMergeRequestListParams(params: Record<string, any>): void {
-  if (!params.with_labels_details) {
-    params.with_labels_details = "true";
-  }
-  if (params.with_merge_status_recheck == null) {
-    params.with_merge_status_recheck = "true";
-  }
-}
-
 export function getMRHeadPipelineStatus(mr: MergeRequest | undefined): string | undefined {
   return mr?.head_pipeline?.status;
 }
@@ -496,6 +487,8 @@ export class MergeRequest {
   public user_notes_count: number | undefined = undefined;
   public user?: MergeRequestUser;
   public head_pipeline?: MRHeadPipeline;
+  public resolved_discussions_count?: number;
+  public resolvable_discussions_count?: number;
 }
 
 export class Pipeline {
@@ -1028,29 +1021,6 @@ export class GitLab {
     return userItems;
   }
 
-  async getMergeRequests(params: Record<string, any>, project?: Project): Promise<MergeRequest[]> {
-    applyMergeRequestListParams(params);
-    const projectPrefix = project ? `projects/${project.id}/` : "";
-    const issueItems: MergeRequest[] = await this.fetch(`${projectPrefix}merge_requests`, params).then((issues) => {
-      return (issues as GitLabMergeRequestJson[]).map((issue) => jsonDataToMergeRequest(issue));
-    });
-    return issueItems;
-  }
-
-  async getMergeRequestsPage(
-    params: Record<string, any>,
-    page: number,
-    project?: Project,
-  ): Promise<{ mergeRequests: MergeRequest[]; hasMore: boolean }> {
-    applyMergeRequestListParams(params);
-    const projectPrefix = project ? `projects/${project.id}/` : "";
-    const { data, hasMore } = await this.fetchPaged(`${projectPrefix}merge_requests`, params, page, 20);
-    const mergeRequests: MergeRequest[] = (data as GitLabMergeRequestJson[]).map((issue) =>
-      jsonDataToMergeRequest(issue),
-    );
-    return { mergeRequests, hasMore };
-  }
-
   async getMergeRequestsApprovalsFromProjectMR({
     params,
     projectID,
@@ -1073,25 +1043,6 @@ export class GitLab {
 
   async getMergeRequestDiscussions(projectID: number, mrIID: number): Promise<MRDiscussion[]> {
     return await this.fetch(`projects/${projectID}/merge_requests/${mrIID}/discussions`, {}, true);
-  }
-
-  async getMergeRequest(projectID: number, mrID: number, params: Record<string, any>): Promise<MergeRequest> {
-    if (!params.with_labels_details) {
-      params.with_labels_details = "true";
-    }
-    const projectPrefix = `projects/${projectID}/merge_requests/${mrID}`;
-    const result: MergeRequest = await this.fetch(`${projectPrefix}`, params).then((mr) => {
-      return jsonDataToMergeRequest(mr as GitLabMergeRequestJson);
-    });
-    return result;
-  }
-
-  async getGroupMergeRequests(params: Record<string, any>, group: Group): Promise<MergeRequest[]> {
-    applyMergeRequestListParams(params);
-    const issueItems: MergeRequest[] = await this.fetch(`groups/${group.id}/merge_requests`, params).then((issues) => {
-      return (issues as GitLabMergeRequestJson[]).map((issue) => jsonDataToMergeRequest(issue));
-    });
-    return issueItems;
   }
 
   async getTodos(params: Record<string, any>, all?: boolean): Promise<Todo[]> {

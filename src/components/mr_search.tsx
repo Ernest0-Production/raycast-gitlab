@@ -10,8 +10,7 @@ import {
   MRListDetailsToggleAction,
   MRListMetadataToggleAction,
   mrSearchBarPlaceholder,
-  getMRQuery,
-  injectMRQueryNamedParameters,
+  buildMRListParams,
   useMRListDetails,
 } from "./mr";
 import { RefreshMergeRequestsAction } from "./mr_actions";
@@ -20,8 +19,6 @@ import { appendMROrderByParams, MergeRequestSortSubmenu, MR_DEFAULT_ORDER_BY, MR
 import { MergeRequestScopeSubmenu } from "./mr_scope";
 import { mrStateFilterIcon } from "./mr_status";
 import { MyProjectsDropdown, useMyProjects } from "./project";
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 const MR_STATE_FILTERS: { state: MRState; title: string }[] = [
   { state: MRState.opened, title: "Open" },
@@ -134,12 +131,8 @@ export function SearchMyMergeRequests() {
   }, [myprojects, projectId, setProjectId]);
 
   const params = useMemo(() => {
-    const requestParams: Record<string, any> = { state: mrState, scope };
+    const requestParams = buildMRListParams(search, scope, mrState);
     appendMROrderByParams(requestParams, orderBy);
-    const parsedQuery = getMRQuery(search);
-    requestParams.search = parsedQuery.query || "";
-    injectMRQueryNamedParameters(requestParams, parsedQuery, scope, false);
-    injectMRQueryNamedParameters(requestParams, parsedQuery, scope, true);
     return requestParams;
   }, [mrState, scope, orderBy, search]);
   const paramsHash = useMemo(() => hashRecord(params), [params]);

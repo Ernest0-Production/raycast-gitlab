@@ -1,4 +1,5 @@
 import { gitlab } from "../common";
+import { fetchMergeRequestGqlByProjectIdIid } from "../components/mr_gql";
 
 type Input = {
   projectId: number;
@@ -6,7 +7,7 @@ type Input = {
 };
 
 export async function confirmation({ projectId, mergeRequestIid }: Input) {
-  const mr = await gitlab.getMergeRequest(projectId, mergeRequestIid, {});
+  const mr = await fetchMergeRequestGqlByProjectIdIid(projectId, mergeRequestIid);
   return {
     message: `Are you sure you want to reopen the merge request?`,
     info: [

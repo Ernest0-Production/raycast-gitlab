@@ -1,18 +1,17 @@
 import { ActionPanel, List, Color, Detail, Action, Image, Icon, Keyboard } from "@raycast/api";
 import { getMRHeadPipelineStatus, Group, MergeRequest, Project } from "../gitlabapi";
 import { GitLabIcons } from "../icons";
-import { getGitLabGQL, gitlab } from "../common";
-import { useCallback, useState } from "react";
-import { getErrorMessage, optimizeMarkdownText, Query, showErrorToast, tokenizeQueryText } from "../utils";
+import { useCallback, useMemo, useState } from "react";
+import { getErrorMessage, hashRecord, optimizeMarkdownText, Query, showErrorToast, tokenizeQueryText } from "../utils";
 import { getMRDiscussionMetadataLabel, useMRDiscussionStats } from "./mr_discussions";
 import { getMRStateListIcon } from "./mr_status";
-import { gql } from "@apollo/client";
 import { MRCopySection, MRItemActions, ShowMRCommitsAction, ShowMRPipelinesAction } from "./mr_actions";
 import { GitLabOpenInBrowserAction } from "./actions";
 import { getCIJobStatusIcon, getMRPipelineStatusTooltip } from "./jobs";
-import { useMRPipelines } from "./mr_pipelines";
 import { MRDetailMetadata, MRListDetailMetadata } from "./mr_metadata";
 import { useCachedState, usePromise } from "@raycast/utils";
+import { fetchMergeRequestGqlByGlobalId, fetchMergeRequestGqlByProjectIid, MRDetailGqlData } from "./mr_gql";
+import { usePaginatedMergeRequests } from "./mr_data";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -81,19 +80,8 @@ export function MRListMetadataToggleAction(props: { isShowingDetail: boolean }) 
   );
 }
 
-const GET_MR_DETAIL = gql`
-  query GetMRDetail($id: MergeRequestID!) {
-    mergeRequest(id: $id) {
-      description
-      project {
-        webUrl
-      }
-    }
-  }
-`;
-
 export function MRDetailFetch(props: { project: Project; mrId: number }) {
-  const { mr, isLoading, error } = useMR(props.project.id, props.mrId);
+  const { mr, isLoading, error } = useMR(props.project, props.mrId);
   if (error) {
     showErrorToast(error, "Could not fetch Merge Request Details");
   }
@@ -104,10 +92,7 @@ export function MRDetailFetch(props: { project: Project; mrId: number }) {
   }
 }
 
-interface MRDetailData {
-  description: string;
-  projectWebUrl: string;
-}
+type MRDetailData = MRDetailGqlData;
 
 export function MRDetail(props: { mr: MergeRequest }) {
   const mr = props.mr;
@@ -183,12 +168,8 @@ function useDetail(issueID: number): {
 } {
   const { data, error, isLoading } = usePromise(
     async (mrId: number): Promise<MRDetailData> => {
-      const data = await getGitLabGQL().client.query({
-        query: GET_MR_DETAIL,
-        variables: { id: `gid://gitlab/MergeRequest/${mrId}` },
-      });
-      const desc = data.data.mergeRequest.description || "<no description>";
-      return { projectWebUrl: data.data.mergeRequest.project.webUrl, description: desc };
+      const { detail } = await fetchMergeRequestGqlByGlobalId(mrId);
+      return detail;
     },
     [issueID],
     // The error is surfaced via `error` and toasted by the caller in render.
@@ -196,6 +177,19 @@ function useDetail(issueID: number): {
   );
 
   return { mrdetail: data, error: error ? getErrorMessage(error) : undefined, isLoading };
+}
+
+export function buildMRListParams(query: string | undefined, scope: MRScope, state: MRState): Record<string, any> {
+  const parsedQuery = getMRQuery(query);
+  const params: Record<string, any> = {
+    state,
+    scope,
+    search: parsedQuery.query || "",
+    in: "title",
+  };
+  injectMRQueryNamedParameters(params, parsedQuery, scope, false);
+  injectMRQueryNamedParameters(params, parsedQuery, scope, true);
+  return params;
 }
 
 interface MRListProps {
@@ -227,7 +221,15 @@ export function MRList({
   searchBarAccessory = undefined,
 }: MRListProps) {
   const [searchText, setSearchText] = useState<string>();
-  const { mrs, error, isLoading, refresh } = useSearch(searchText, scope, state, project, group);
+  const params = useMemo(() => buildMRListParams(searchText, scope, state), [searchText, scope, state]);
+  const paramsHash = useMemo(() => hashRecord(params), [params]);
+  const { mrs, error, isLoading, performRefetch, pagination } = usePaginatedMergeRequests({
+    cacheKey: `mrlist_${project?.id ?? "none"}_${group?.id ?? "none"}_${paramsHash}`,
+    buildParams: () => params,
+    project,
+    group,
+    onError: () => undefined,
+  });
 
   if (error) {
     showErrorToast(error, "Cannot search Merge Requests");
@@ -241,6 +243,7 @@ export function MRList({
       searchBarPlaceholder={mrSearchBarPlaceholder}
       onSearchTextChange={setSearchText}
       isLoading={isLoading}
+      pagination={pagination}
       throttle={true}
       searchBarAccessory={searchBarAccessory}
       navigationTitle={navTitle(project, group)}
@@ -254,17 +257,18 @@ export function MRList({
         </ActionPanel>
       }
     >
-      <List.Section title={title} subtitle={mrs.length.toString() || "0"}>
-        {mrs.map((mr) => (
+      <List.Section title={title} subtitle={mrs?.length.toString() || "0"}>
+        {mrs?.map((mr) => (
           <MRListItem
             key={mr.id}
             mr={mr}
-            refreshData={refresh}
+            refreshData={performRefetch}
             isShowingDetail={isShowingDetail}
             onToggleListDetails={toggleListDetails}
           />
         ))}
       </List.Section>
+      <MRListEmptyView />
     </List>
   );
 }
@@ -298,11 +302,7 @@ export function MRListItem(props: {
     : undefined;
 
   const showCIStatus = props.showCIStatus === undefined || props.showCIStatus === true;
-  const listPipelineStatus = getMRHeadPipelineStatus(mr);
-  const fetchMrPipelines = showCIStatus && !mr.has_conflicts && !listPipelineStatus;
-  const { pipelines: latestMrPipeline } = useMRPipelines(mr, { enabled: fetchMrPipelines, limit: 1 });
-  const pipelineStatus =
-    showCIStatus && !mr.has_conflicts ? (listPipelineStatus ?? latestMrPipeline?.[0]?.status) : undefined;
+  const pipelineStatus = showCIStatus && !mr.has_conflicts ? getMRHeadPipelineStatus(mr) : undefined;
   const accessories: List.Item.Accessory[] = [];
   if (!isShowingDetail) {
     if (pipelineStatus) {
@@ -466,56 +466,17 @@ export function injectMRQueryNamedParameters(
   }
 }
 
-export function useSearch(
-  query: string | undefined,
-  scope: MRScope,
-  state: MRState,
-  project?: Project,
-  group?: Group,
-): {
-  mrs: MergeRequest[];
-  error?: string;
-  isLoading: boolean;
-  refresh: () => void;
-} {
-  const { data, error, isLoading, revalidate } = usePromise(
-    async (
-      queryText: string,
-      mrScope: MRScope,
-      mrState: MRState,
-      project?: Project,
-      group?: Group,
-    ): Promise<MergeRequest[]> => {
-      const parsedQuery = getMRQuery(queryText);
-      const params: Record<string, any> = {
-        state: mrState,
-        scope: mrScope,
-        search: parsedQuery.query || "",
-        in: "title",
-      };
-      injectMRQueryNamedParameters(params, parsedQuery, mrScope, false);
-      injectMRQueryNamedParameters(params, parsedQuery, mrScope, true);
-      return group ? gitlab.getGroupMergeRequests(params, group) : gitlab.getMergeRequests(params, project);
-    },
-    [query ?? "", scope, state, project, group],
-    // The error is surfaced via `error` and toasted by the caller in render.
-    { onError: () => undefined },
-  );
-
-  return { mrs: data ?? [], error: error ? getErrorMessage(error) : undefined, isLoading, refresh: revalidate };
-}
-
 export function useMR(
-  projectID: number,
-  mrID: number,
+  project: Project,
+  mrIID: number,
 ): {
   mr?: MergeRequest;
   error?: string;
   isLoading: boolean;
 } {
   const { data, error, isLoading } = usePromise(
-    (projectId: number, mrId: number) => gitlab.getMergeRequest(projectId, mrId, {}),
-    [projectID, mrID],
+    (proj: Project, iid: number) => fetchMergeRequestGqlByProjectIid(proj, iid),
+    [project, mrIID],
     // The error is surfaced via `error` and toasted by the caller in render.
     { onError: () => undefined },
   );
