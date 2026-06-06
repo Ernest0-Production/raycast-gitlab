@@ -1,8 +1,8 @@
 import { Action, ActionPanel, Color, Icon, Image, List } from "@raycast/api";
 import { GitLabIcons } from "../../icons";
-import { capitalizeFirstLetter, copySecondaryShortcut, copyShortcut, formatDate, formatDateTime } from "../../utils";
+import { copySecondaryShortcut, copyShortcut, formatDate, formatDateTime } from "../../utils";
 import { GitLabOpenInBrowserAction } from "../actions";
-import { getCIJobStatusIcon } from "../jobs";
+import { getCIJobStatusIcon, getMRPipelineStatusTooltip } from "../jobs";
 import { Commit } from "./types";
 
 export function CommitListItem(props: { commit: Commit }) {
@@ -21,7 +21,7 @@ export function CommitListItem(props: { commit: Commit }) {
       accessories={[
         {
           icon: statusIcon,
-          tooltip: commit.pipeline_status ? `Status: ${capitalizeFirstLetter(commit.pipeline_status)}` : undefined,
+          tooltip: commit.pipeline_status ? getMRPipelineStatusTooltip(commit.pipeline_status) : undefined,
         },
         {
           text: formatDate(commit.created_at),

@@ -1,8 +1,8 @@
-import { Action, ActionPanel, List, Icon, Image, Color } from "@raycast/api";
+import { Action, ActionPanel, List, Icon, Color } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
 import { getCIRefreshInterval, gitlab } from "../common";
-import { capitalizeFirstLetter, copyShortcut, formatDate, formatDateTime, showErrorToast } from "../utils";
-import { JobList } from "./jobs";
+import { copyShortcut, formatDate, formatDateTime, showErrorToast } from "../utils";
+import { getCIJobStatusIcon, getMRPipelineStatusTooltip, JobList } from "./jobs";
 import {
   CancelPipelineAction,
   isCancelablePipeline,
@@ -12,43 +12,9 @@ import {
 } from "./pipeline_actions";
 import useInterval from "use-interval";
 import { GitLabOpenInBrowserAction } from "./actions";
-import { GitLabIcons } from "../icons";
 import { Pipeline } from "../gitlabapi";
 import { usePaginatedProjectPipelines } from "./pipelines_data";
 export { normalizePipelineForList } from "./pipelines_gql";
-
-function getIcon(status: string): Image {
-  switch (status.toLowerCase()) {
-    case "success": {
-      return { source: GitLabIcons.status_success, tintColor: Color.Green };
-    }
-    case "created": {
-      return { source: GitLabIcons.status_created, tintColor: Color.Yellow };
-    }
-    case "pending": {
-      return { source: GitLabIcons.status_pending, tintColor: Color.Yellow };
-    }
-    case "running": {
-      return { source: GitLabIcons.status_running, tintColor: Color.Blue };
-    }
-    case "failed": {
-      return { source: GitLabIcons.status_failed, tintColor: Color.Red };
-    }
-    case "canceled": {
-      return { source: GitLabIcons.status_canceled, tintColor: Color.PrimaryText };
-    }
-    default:
-      return { source: GitLabIcons.status_notfound, tintColor: Color.Magenta };
-  }
-}
-
-function getStatusText(status: string) {
-  if (status == "success") {
-    return "passed";
-  } else {
-    return status;
-  }
-}
 
 function pipelineTimestamp(pipeline: Pipeline, field: "finished" | "started" | "created"): string | undefined {
   if (field === "finished") {
@@ -86,17 +52,14 @@ export function PipelineListItem(props: {
   runRefFallback?: string;
 }) {
   const pipeline = props.pipeline;
-  const icon = getIcon(pipeline.status);
   const dateAccessory = getPipelineListAccessory(pipeline);
   return (
     <List.Item
       id={`${pipeline.id}`}
       title={pipeline.id.toString()}
       icon={{
-        value: icon,
-        tooltip: pipeline?.status
-          ? `Status: ${capitalizeFirstLetter(getStatusText(pipeline.status.toLowerCase()))}`
-          : "",
+        value: getCIJobStatusIcon(pipeline.status, false),
+        tooltip: pipeline.status ? getMRPipelineStatusTooltip(pipeline.status) : "",
       }}
       subtitle={pipeline.commit_title || pipeline.ref}
       accessories={dateAccessory ? [dateAccessory] : []}

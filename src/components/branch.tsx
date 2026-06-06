@@ -7,8 +7,8 @@ import { GitLabIcons } from "../icons";
 import { CreateMRAction, ShowBranchCommitsAction } from "./branch_actions";
 import { GitLabOpenInBrowserAction } from "./actions";
 import { useCommitStatus } from "./commits/utils";
-import { getCIJobStatusIcon } from "./jobs";
-import { capitalizeFirstLetter, showErrorToast } from "../utils";
+import { getCIJobStatusIcon, getMRPipelineStatusTooltip } from "./jobs";
+import { showErrorToast } from "../utils";
 
 function getIcon(merged: boolean): Image {
   if (merged) {
@@ -42,7 +42,7 @@ export function BranchListItem(props: { branch: Branch; project: Project }) {
       accessories={[
         {
           icon: statusIcon,
-          tooltip: commitStatus?.status ? `Status: ${capitalizeFirstLetter(commitStatus.status)}` : undefined,
+          tooltip: commitStatus?.status ? getMRPipelineStatusTooltip(commitStatus.status) : undefined,
         },
       ]}
       actions={
