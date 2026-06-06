@@ -1,60 +1,12 @@
 import { ActionPanel, List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { getCIRefreshInterval, gitlab } from "../common";
-import { MergeRequest, Pipeline, Project } from "../gitlabapi";
+import { MergeRequest, Project } from "../gitlabapi";
 import { getErrorMessage, showErrorToast } from "../utils";
-import { normalizePipelineForList, PipelineListItem } from "./pipelines";
+import { PipelineListItem } from "./pipelines";
 import { RunPipelineAction } from "./pipeline_actions";
+import { usePaginatedMRPipelines } from "./pipelines_data";
 import useInterval from "use-interval";
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-export type UseMRPipelinesOptions = {
-  enabled?: boolean;
-  /** Latest N pipelines (GitLab returns newest first). Use `1` for list row CI status. */
-  limit?: number;
-  /** Paginate through all MR pipelines (pipelines list view). */
-  all?: boolean;
-};
-
-export function useMRPipelines(
-  mr: MergeRequest,
-  options: UseMRPipelinesOptions | boolean = true,
-): {
-  pipelines: Pipeline[] | undefined;
-  isLoading: boolean | undefined;
-  error: string | undefined;
-  performRefetch: () => void;
-} {
-  const resolved: UseMRPipelinesOptions =
-    typeof options === "boolean" ? { enabled: options } : { enabled: true, ...options };
-  const enabled = resolved.enabled ?? true;
-  const fetchAll = resolved.all === true;
-  const limit = resolved.limit;
-
-  const { data, isLoading, error, revalidate } = useCachedPromise(
-    async (
-      projectID: number,
-      iid: number,
-      fetchAll: boolean,
-      pageLimit: number | undefined,
-    ): Promise<Pipeline[] | undefined> => {
-      const params: Record<string, string> = {};
-      if (pageLimit !== undefined) {
-        params.per_page = `${pageLimit}`;
-      }
-      const result: Record<string, any>[] | undefined = await gitlab.fetch(
-        `projects/${projectID}/merge_requests/${iid}/pipelines`,
-        params,
-        fetchAll,
-      );
-      return result?.map((entry) => normalizePipelineForList(entry));
-    },
-    [mr.project_id, mr.iid, fetchAll, limit],
-    { execute: enabled, onError: () => undefined },
-  );
-  return { pipelines: data, isLoading, error: error ? getErrorMessage(error) : undefined, performRefetch: revalidate };
-}
 
 function useMRProject(mr: MergeRequest): {
   project: Project | undefined;
@@ -72,7 +24,12 @@ function useMRProject(mr: MergeRequest): {
 export function MRPipelineList(props: { mr: MergeRequest }) {
   const { mr } = props;
   const navigationTitle = `Pipelines · ${mr.reference_full}`;
-  const { pipelines, isLoading, error, performRefetch } = useMRPipelines(mr, { all: true });
+  const cacheKey = `mr_pipelines_${mr.project_id}_${mr.iid}`;
+  const { pipelines, isLoading, error, performRefetch, pagination } = usePaginatedMRPipelines({
+    cacheKey,
+    projectID: mr.project_id,
+    mrIID: mr.iid,
+  });
   const { project, isLoading: projectLoading, error: projectError } = useMRProject(mr);
 
   useInterval(() => {
@@ -88,13 +45,14 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
 
   const projectFullPath = project?.fullPath ?? "";
 
-  const listLoading = isLoading === undefined || projectLoading === undefined || isLoading || projectLoading;
+  const listLoading = isLoading || projectLoading === undefined || projectLoading;
   const runRef = pipelines?.[0]?.ref || mr.source_branch;
   const runProjectId = pipelines?.[0]?.projectId || `${mr.project_id}`;
 
   return (
     <List
       isLoading={listLoading}
+      pagination={pagination}
       navigationTitle={navigationTitle}
       actions={
         <ActionPanel>
@@ -110,7 +68,7 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
       }
     >
       <List.Section title="Pipelines" subtitle={pipelines?.length ? `${pipelines.length}` : undefined}>
-        {pipelines?.map((pipeline) => (
+        {(pipelines ?? []).map((pipeline) => (
           <PipelineListItem
             key={pipeline.id}
             pipeline={pipeline}

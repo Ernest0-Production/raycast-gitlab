@@ -1,0 +1,204 @@
+import { gql } from "@apollo/client";
+import { getGitLabGQL, gitlab } from "../../common";
+import { Commit } from "./types";
+
+export const MR_COMMITS_PAGE_SIZE = 20;
+
+const COMMIT_LIST_FIELDS = gql`
+  fragment CommitListFields on Commit {
+    sha
+    shortId
+    title
+    message
+    authorName
+    authorEmail
+    committerName
+    authoredDate
+    committedDate
+    webUrl
+    author {
+      avatarUrl
+    }
+    pipelines(first: 1) {
+      nodes {
+        status
+        detailedStatus {
+          label
+          name
+        }
+      }
+    }
+  }
+`;
+
+const MR_COMMITS = gql`
+  ${COMMIT_LIST_FIELDS}
+  query MergeRequestCommits($fullPath: ID!, $iid: String!, $first: Int!, $after: String) {
+    project(fullPath: $fullPath) {
+      mergeRequest(iid: $iid) {
+        commits(first: $first, after: $after) {
+          nodes {
+            ...CommitListFields
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+  }
+`;
+
+interface GqlPipelineNode {
+  status: string;
+  detailedStatus?: { label?: string | null; name?: string | null } | null;
+}
+
+interface GqlCommitNode {
+  sha: string;
+  shortId: string;
+  title: string;
+  message?: string | null;
+  authorName?: string | null;
+  authorEmail?: string | null;
+  committerName?: string | null;
+  authoredDate: string;
+  committedDate: string;
+  webUrl: string;
+  author?: { avatarUrl?: string | null } | null;
+  pipelines?: { nodes: GqlPipelineNode[] } | null;
+}
+
+interface GqlCommitConnection {
+  nodes: GqlCommitNode[];
+  pageInfo: {
+    hasNextPage: boolean;
+    endCursor?: string | null;
+  };
+}
+
+const endCursorsByCacheKey = new Map<string, string[]>();
+
+export function resetMRCommitsGqlCursors(cacheKey: string): void {
+  endCursorsByCacheKey.delete(cacheKey);
+}
+
+function resolveAvatarUrl(avatarUrl: string | null | undefined): string | undefined {
+  if (!avatarUrl) {
+    return undefined;
+  }
+  if (/^https?:\/\//i.test(avatarUrl)) {
+    return avatarUrl;
+  }
+  return gitlab.joinUrl(avatarUrl);
+}
+
+function pipelineStatusToRest(status: string | undefined): string | undefined {
+  if (!status) {
+    return undefined;
+  }
+  return status.toLowerCase();
+}
+
+function pipelineStatusFromGql(pipeline: GqlPipelineNode | null | undefined): string | undefined {
+  if (!pipeline) {
+    return undefined;
+  }
+  const fromStatus = pipelineStatusToRest(pipeline.status);
+  if (fromStatus) {
+    return fromStatus;
+  }
+  const detailed = pipeline.detailedStatus;
+  if (detailed?.name) {
+    return pipelineStatusToRest(detailed.name);
+  }
+  if (detailed?.label) {
+    return pipelineStatusToRest(detailed.label);
+  }
+  return undefined;
+}
+
+function gqlCommitToCommit(node: GqlCommitNode): Commit {
+  const pipeline = node.pipelines?.nodes?.[0];
+  return {
+    id: node.sha,
+    short_id: node.shortId,
+    title: node.title,
+    created_at: node.authoredDate,
+    message: node.message ?? "",
+    committer_name: node.committerName ?? "",
+    author_name: node.authorName ?? "",
+    author_email: node.authorEmail ?? undefined,
+    committed_date: node.committedDate,
+    web_url: node.webUrl,
+    author_avatar_url: resolveAvatarUrl(node.author?.avatarUrl),
+    pipeline_status: pipelineStatusFromGql(pipeline),
+  };
+}
+
+async function queryMRCommitsConnection(
+  projectFullPath: string,
+  mrIID: number,
+  variables: { first: number; after?: string },
+): Promise<GqlCommitConnection> {
+  const response = await getGitLabGQL().client.query({
+    query: MR_COMMITS,
+    variables: {
+      fullPath: projectFullPath,
+      iid: `${mrIID}`,
+      first: variables.first,
+      after: variables.after,
+    },
+    fetchPolicy: "network-only",
+  });
+  const connection = response.data?.project?.mergeRequest?.commits as GqlCommitConnection | undefined;
+  if (!connection) {
+    throw new Error("Could not load merge request commits");
+  }
+  return connection;
+}
+
+export async function fetchMRCommitsGqlPage(options: {
+  cacheKey: string;
+  page: number;
+  projectFullPath: string;
+  mrIID: number;
+}): Promise<{ commits: Commit[]; hasMore: boolean }> {
+  const { cacheKey, page, projectFullPath, mrIID } = options;
+
+  if (!endCursorsByCacheKey.has(cacheKey)) {
+    endCursorsByCacheKey.set(cacheKey, []);
+  }
+  const cursors = endCursorsByCacheKey.get(cacheKey)!;
+
+  if (page === 0) {
+    cursors.length = 0;
+  }
+
+  if (page > 0 && cursors.length < page) {
+    for (let index = cursors.length; index < page; index += 1) {
+      const after = index === 0 ? undefined : cursors[index - 1];
+      const connection = await queryMRCommitsConnection(projectFullPath, mrIID, {
+        first: MR_COMMITS_PAGE_SIZE,
+        after,
+      });
+      cursors[index] = connection.pageInfo.endCursor ?? "";
+      if (!connection.pageInfo.hasNextPage) {
+        return { commits: [], hasMore: false };
+      }
+    }
+  }
+
+  const after = page > 0 ? cursors[page - 1] : undefined;
+  const connection = await queryMRCommitsConnection(projectFullPath, mrIID, {
+    first: MR_COMMITS_PAGE_SIZE,
+    after,
+  });
+  cursors[page] = connection.pageInfo.endCursor ?? "";
+
+  return {
+    commits: connection.nodes.map(gqlCommitToCommit),
+    hasMore: connection.pageInfo.hasNextPage,
+  };
+}

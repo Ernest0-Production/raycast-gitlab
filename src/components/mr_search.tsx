@@ -26,6 +26,42 @@ const MR_STATE_FILTERS: { state: MRState; title: string }[] = [
   { state: MRState.closed, title: "Closed" },
 ];
 
+const MR_SCOPE_LABELS: Record<Exclude<MRScope, MRScope.all>, string> = {
+  [MRScope.created_by_me]: "created by me",
+  [MRScope.assigned_to_me]: "assigned to me",
+  [MRScope.reviews_for_me]: "reviews for me",
+};
+
+const MR_SORT_LABELS: Record<Exclude<MRSearchOrderBy, "default">, string> = {
+  created_at: "created",
+  updated_at: "updated",
+  merged_at: "merged",
+  title: "title",
+  priority: "priority",
+  label_priority: "label priority",
+  milestone_due: "milestone due",
+  popularity: "popularity",
+};
+
+function formatMRSearchSectionTitle(mrState: MRState, scope: MRScope, orderBy: MRSearchOrderBy): string {
+  const parts: string[] = [];
+
+  if (mrState !== MRState.all) {
+    const stateTitle = MR_STATE_FILTERS.find((filter) => filter.state === mrState)?.title ?? mrState;
+    parts.push(`Only ${stateTitle}`);
+  }
+
+  if (scope !== MRScope.all) {
+    parts.push(MR_SCOPE_LABELS[scope]);
+  }
+
+  if (orderBy !== MR_DEFAULT_ORDER_BY) {
+    parts.push(`sorted by ${MR_SORT_LABELS[orderBy as Exclude<MRSearchOrderBy, "default">]}`);
+  }
+
+  return parts.join(", ");
+}
+
 function MergeRequestStateFilterSubmenu(props: { state: MRState; onSelect: (state: MRState) => void }) {
   return (
     <ActionPanel.Submenu title="Filter Status" icon={Icon.Filter}>
@@ -136,6 +172,7 @@ export function SearchMyMergeRequests() {
     return requestParams;
   }, [mrState, scope, orderBy, search]);
   const paramsHash = useMemo(() => hashRecord(params), [params]);
+  const sectionTitle = useMemo(() => formatMRSearchSectionTitle(mrState, scope, orderBy), [mrState, scope, orderBy]);
   const {
     mrs: data,
     isLoading,
@@ -199,20 +236,22 @@ export function SearchMyMergeRequests() {
         />
       ) : (
         <>
-          {(data ?? []).map((mr) => (
-            <MRListItem
-              key={mr.id}
-              mr={mr}
-              refreshData={performRefetch}
-              showCIStatus={true}
-              isShowingDetail={isShowingDetail}
-              onToggleListDetails={toggleListDetails}
-              filterAction={<MergeRequestStateFilterSubmenu state={mrState} onSelect={setMrState} />}
-              scopeAction={<MergeRequestScopeSubmenu scope={scope} onSelect={setScope} />}
-              sortAction={<MergeRequestSortSubmenu orderBy={orderBy} onSelect={setOrderBy} />}
-              refreshAction={<RefreshMergeRequestsAction onRefresh={performRefetch} />}
-            />
-          ))}
+          <List.Section title={sectionTitle || undefined}>
+            {(data ?? []).map((mr) => (
+              <MRListItem
+                key={mr.id}
+                mr={mr}
+                refreshData={performRefetch}
+                showCIStatus={true}
+                isShowingDetail={isShowingDetail}
+                onToggleListDetails={toggleListDetails}
+                filterAction={<MergeRequestStateFilterSubmenu state={mrState} onSelect={setMrState} />}
+                scopeAction={<MergeRequestScopeSubmenu scope={scope} onSelect={setScope} />}
+                sortAction={<MergeRequestSortSubmenu orderBy={orderBy} onSelect={setOrderBy} />}
+                refreshAction={<RefreshMergeRequestsAction onRefresh={performRefetch} />}
+              />
+            ))}
+          </List.Section>
           <SearchMergeRequestsEmptyView
             mrState={mrState}
             onSelectState={setMrState}

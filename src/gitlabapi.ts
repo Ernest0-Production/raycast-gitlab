@@ -517,6 +517,7 @@ export class Pipeline {
   public queued_duration = 0;
   public coverage = "";
   public webUrl = "";
+  public commit_title = "";
 }
 
 export interface TodoGroup {

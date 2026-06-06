@@ -1,16 +1,16 @@
 import { Action, ActionPanel, Color, Icon, Image, List } from "@raycast/api";
 import { GitLabIcons } from "../../icons";
-import { useUserAvatar } from "../../hooks";
-import { copySecondaryShortcut, copyShortcut, formatDate, formatDateTime } from "../../utils";
+import { capitalizeFirstLetter, copySecondaryShortcut, copyShortcut, formatDate, formatDateTime } from "../../utils";
 import { GitLabOpenInBrowserAction } from "../actions";
+import { getCIJobStatusIcon } from "../jobs";
 import { Commit } from "./types";
 
 export function CommitListItem(props: { commit: Commit }) {
   const commit = props.commit;
-  const { avatarUrl } = useUserAvatar(commit.author_email);
+  const statusIcon = commit.pipeline_status ? getCIJobStatusIcon(commit.pipeline_status, false) : undefined;
 
-  const icon: Image.ImageLike = avatarUrl
-    ? { source: avatarUrl, mask: Image.Mask.Circle }
+  const icon: Image.ImageLike = commit.author_avatar_url
+    ? { source: commit.author_avatar_url, mask: Image.Mask.Circle }
     : { source: GitLabIcons.commit, tintColor: Color.SecondaryText };
 
   return (
@@ -19,6 +19,10 @@ export function CommitListItem(props: { commit: Commit }) {
       title={commit.title}
       icon={{ value: icon, tooltip: commit.author_name }}
       accessories={[
+        {
+          icon: statusIcon,
+          tooltip: commit.pipeline_status ? `Status: ${capitalizeFirstLetter(commit.pipeline_status)}` : undefined,
+        },
         {
           text: formatDate(commit.created_at),
           tooltip: `Created: ${formatDateTime(commit.created_at)}`,
