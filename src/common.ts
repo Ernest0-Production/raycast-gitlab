@@ -57,6 +57,13 @@ export function createGitLabGQLClient(): GitLabGQL {
   const client = new ApolloClient({
     link: concat(authMiddleware, httpLink),
     cache: new InMemoryCache(),
+    defaultOptions: {
+      query: {
+        // Raycast hooks own caching; Apollo normalized cache merge fails when list
+        // filter variables change (e.g. project.mergeRequests with different state).
+        fetchPolicy: "no-cache",
+      },
+    },
   });
   return new GitLabGQL(instance, client);
 }

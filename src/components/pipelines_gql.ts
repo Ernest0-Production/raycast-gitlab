@@ -142,7 +142,6 @@ async function queryProjectPipelinesConnection(
       first: variables.first,
       after: variables.after,
     },
-    fetchPolicy: "network-only",
   });
   const connection = response.data?.project?.pipelines as GqlPipelineConnection | undefined;
   if (!connection) {
@@ -164,7 +163,6 @@ async function queryMRPipelinesConnection(
       first: variables.first,
       after: variables.after,
     },
-    fetchPolicy: "network-only",
   });
   const connection = response.data?.project?.mergeRequest?.pipelines as GqlPipelineConnection | undefined;
   if (!connection) {

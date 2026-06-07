@@ -772,7 +772,7 @@ async function queryMergeRequestConnection(
     gqlVariables.fullPath = source.fullPath;
   }
 
-  const response = await client.query({ query, variables: gqlVariables, fetchPolicy: "network-only" });
+  const response = await client.query({ query, variables: gqlVariables });
   const connection = connectionFromResponse(source, response.data);
   if (!connection) {
     throw new Error("Could not load merge requests");
@@ -881,7 +881,6 @@ export async function fetchMergeRequestGqlByProjectIid(project: Project, iid: nu
   const response = await getGitLabGQL().client.query({
     query: PROJECT_MERGE_REQUEST_BY_IID,
     variables: { fullPath: project.fullPath, iid: `${iid}` },
-    fetchPolicy: "network-only",
   });
   const node = response.data?.project?.mergeRequest as GqlMRListNode | undefined;
   if (!node) {

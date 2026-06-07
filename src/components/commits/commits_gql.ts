@@ -148,7 +148,6 @@ async function queryMRCommitsConnection(
       first: variables.first,
       after: variables.after,
     },
-    fetchPolicy: "network-only",
   });
   const connection = response.data?.project?.mergeRequest?.commits as GqlCommitConnection | undefined;
   if (!connection) {

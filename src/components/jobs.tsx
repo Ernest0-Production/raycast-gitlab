@@ -281,7 +281,6 @@ export function useSearch(
         const data = await getGitLabGQL().client.query({
           query: GET_PIPELINE_JOBS,
           variables: { fullPath, pipelineIID: piid },
-          fetchPolicy: "network-only",
         });
         const stages: Record<string, Job[]> = {};
         for (const stage of data.data.project.pipeline.stages.nodes) {
