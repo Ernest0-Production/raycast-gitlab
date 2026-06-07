@@ -2,7 +2,6 @@ import { List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useRef } from "react";
 import { Pipeline } from "../gitlabapi";
-import { getErrorMessage } from "../utils";
 import { fetchMRPipelinesGqlPage, fetchProjectPipelinesGqlPage } from "./pipelines_gql";
 
 export type ListPagination = List.Props["pagination"];
@@ -13,16 +12,15 @@ export function usePaginatedProjectPipelines(options: {
   execute?: boolean;
   keepPreviousData?: boolean;
 }): {
-  pipelines: Pipeline[] | undefined;
+  pipelines: Pipeline[];
   isLoading: boolean;
-  error: string | undefined;
   performRefetch: () => void;
   pagination: ListPagination;
 } {
   const projectFullPathRef = useRef(options.projectFullPath);
   projectFullPathRef.current = options.projectFullPath;
 
-  const { data, isLoading, error, revalidate, pagination } = useCachedPromise(
+  const { data, isLoading, revalidate, pagination } = useCachedPromise(
     (cacheKey: string) => async (paginationOptions: { page: number }) => {
       const { pipelines, hasMore } = await fetchProjectPipelinesGqlPage({
         cacheKey,
@@ -35,13 +33,13 @@ export function usePaginatedProjectPipelines(options: {
     {
       execute: options.execute,
       keepPreviousData: options.keepPreviousData,
+      initialData: [],
     },
   );
 
   return {
     pipelines: data,
     isLoading,
-    error: error ? getErrorMessage(error) : undefined,
     performRefetch: revalidate,
     pagination,
   };
@@ -54,9 +52,8 @@ export function usePaginatedMRPipelines(options: {
   execute?: boolean;
   keepPreviousData?: boolean;
 }): {
-  pipelines: Pipeline[] | undefined;
+  pipelines: Pipeline[];
   isLoading: boolean;
-  error: string | undefined;
   performRefetch: () => void;
   pagination: ListPagination;
 } {
@@ -65,7 +62,7 @@ export function usePaginatedMRPipelines(options: {
   const mrIIDRef = useRef(options.mrIID);
   mrIIDRef.current = options.mrIID;
 
-  const { data, isLoading, error, revalidate, pagination } = useCachedPromise(
+  const { data, isLoading, revalidate, pagination } = useCachedPromise(
     (cacheKey: string) => async (paginationOptions: { page: number }) => {
       const { pipelines, hasMore } = await fetchMRPipelinesGqlPage({
         cacheKey,
@@ -79,13 +76,13 @@ export function usePaginatedMRPipelines(options: {
     {
       execute: options.execute,
       keepPreviousData: options.keepPreviousData,
+      initialData: [],
     },
   );
 
   return {
     pipelines: data,
     isLoading,
-    error: error ? getErrorMessage(error) : undefined,
     performRefetch: revalidate,
     pagination,
   };

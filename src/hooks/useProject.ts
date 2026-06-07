@@ -1,7 +1,6 @@
 import { usePromise } from "@raycast/utils";
 import { User, Label, Milestone } from "../gitlabapi";
 import { gitlab } from "../common";
-import { getErrorMessage } from "../utils";
 
 export interface ProjectInfo {
   members: User[];
@@ -11,11 +10,10 @@ export interface ProjectInfo {
 
 export function useProject(query?: string): {
   projectinfo?: ProjectInfo;
-  errorProjectInfo?: string;
   isLoadingProjectInfo: boolean;
 } {
   const proid = parseInt(query || "0");
-  const { data, error, isLoading } = usePromise(
+  const { data, isLoading } = usePromise(
     async (projectId: number): Promise<ProjectInfo> => {
       const members = await gitlab.getProjectMember(projectId);
       const labels = await gitlab.getProjectLabels(projectId);
@@ -30,7 +28,6 @@ export function useProject(query?: string): {
 
   return {
     projectinfo: data,
-    errorProjectInfo: error ? getErrorMessage(error) : undefined,
     isLoadingProjectInfo: isLoading,
   };
 }

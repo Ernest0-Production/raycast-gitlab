@@ -94,14 +94,15 @@ export function MRCreateForm(props: { project?: Project | undefined; branch?: st
   );
   const { data: projects, isLoading: isLoadingProjects } = useCachedPromise(
     async (): Promise<Project[]> => (await gitlab.getUserProjects({}, true)) || [],
-    []
+    [],
+    { initialData: [] },
   );
   const { projectinfo, isLoadingProjectInfo } = useProjectMR(selectedProject);
   const members = projectinfo?.members || [];
 
   let project: Project | undefined;
   if (selectedProject) {
-    project = projects?.find((candidate) => candidate.id.toString() === selectedProject);
+    project = projects.find((candidate) => candidate.id.toString() === selectedProject);
   }
   const { milestoneInfo, isLoadingMilestoneInfo } = useMilestones(project?.group_id);
 
@@ -220,7 +221,7 @@ function ProjectDropdown(props: {
         props.setSelectedProject(newValue);
       }}
     >
-      {props.projects?.map((project) => (
+      {props.projects.map((project) => (
         <ProjectDropdownItem key={project.id} project={project} />
       ))}
     </Form.Dropdown>

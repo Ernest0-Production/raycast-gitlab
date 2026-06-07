@@ -3,7 +3,7 @@ import { useCachedPromise } from "@raycast/utils";
 import { getGitLabGQL, gitlab } from "../common";
 import { dataToProject, Group, Milestone, Project } from "../gitlabapi";
 import { getTextIcon, GitLabIcons } from "../icons";
-import { getErrorMessage, getFirstChar, getPreferences } from "../utils";
+import { getFirstChar, getPreferences } from "../utils";
 import { GitLabOpenInBrowserAction } from "./actions";
 import { EpicList } from "./epics";
 import { IssueList, IssueScope, IssueState } from "./issues";
@@ -98,13 +98,9 @@ export function GroupListEmptyView() {
 
 export function GroupList(props: { parentGroup?: Group }) {
   const topLevelOnly = !getPreferences().flatlist;
-  const { groupsinfo, error, isLoading } = useMyGroups({
+  const { groupsinfo, isLoading } = useMyGroups({
     parentGroupID: props.parentGroup ? props.parentGroup.id : 0,
     top_level_only: topLevelOnly });
-
-  if (groupsinfo === undefined && error === undefined) {
-    return <List isLoading={true} />;
-  }
 
   return (
     <List
@@ -113,12 +109,12 @@ export function GroupList(props: { parentGroup?: Group }) {
       navigationTitle={props.parentGroup ? `Group ${props.parentGroup.full_path}` : undefined}
     >
       <List.Section title="Groups">
-        {groupsinfo?.groups?.map((group) => (
+        {groupsinfo.groups.map((group) => (
           <GroupListItem key={group.id} group={group} nameOnly={topLevelOnly} />
         ))}
       </List.Section>
       <List.Section title="Projects">
-        {groupsinfo?.projects?.map((project) => (
+        {groupsinfo.projects.map((project) => (
           <ProjectListItem key={project.id} project={project} nameOnly={topLevelOnly} />
         ))}
       </List.Section>
@@ -127,9 +123,11 @@ export function GroupList(props: { parentGroup?: Group }) {
   );
 }
 
+const emptyGroupInfo: GroupInfo = { groups: [], projects: [] };
+
 export function useMyGroups(args?: { query?: string; parentGroupID?: number; top_level_only?: boolean }): {
-  groupsinfo?: GroupInfo;
-  error?: string;
+  groupsinfo: GroupInfo;
+  hasError?: boolean;
   isLoading: boolean | undefined;
 } {
   const topLevelOnly = args?.top_level_only === true;
@@ -157,9 +155,10 @@ export function useMyGroups(args?: { query?: string; parentGroupID?: number; top
               ).map((raw) => dataToProject(raw))
             : [] };
     },
-    [args?.parentGroupID, topLevelOnly]
+    [args?.parentGroupID, topLevelOnly],
+    { initialData: emptyGroupInfo },
   );
-  return { groupsinfo: data, isLoading, error: error ? getErrorMessage(error) : undefined };
+  return { groupsinfo: data, isLoading, hasError: error !== undefined };
 }
 
 export interface GroupInfo {

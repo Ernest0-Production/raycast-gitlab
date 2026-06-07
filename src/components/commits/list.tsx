@@ -58,14 +58,12 @@ export function RecentCommitsList() {
   const [project, setProject] = useState<Project>();
   const { data, isLoading, revalidate } = useCachedPromise(
     async (): Promise<Event[]> => fetchPushEventsWithProjects(),
-    []
+    [],
+    { initialData: [] },
   );
-  if (isLoading && data === undefined) {
-    return <List isLoading={true} searchBarPlaceholder="" />;
-  }
   return (
     <List isLoading={isLoading} searchBarAccessory={<MyProjectsDropdown onChange={setProject} />}>
-      {(project ? data?.filter((event) => event.project_id === project.id) : data)?.map((event) => (
+      {(project ? data.filter((event) => event.project_id === project.id) : data).map((event) => (
         <EventCommitListItem event={event} key={`${event.id}`} onRefresh={revalidate} />
       ))}
       <RecentCommitsListEmptyView />
@@ -87,7 +85,7 @@ export function MRCommitList(props: { projectID: number; mrIID: number; navigati
 
   return (
     <List isLoading={isLoading} pagination={pagination} navigationTitle={props.navigationTitle}>
-      {(commits ?? []).map((commit) => (
+      {commits.map((commit) => (
         <CommitListItem key={commit.id} commit={commit} />
       ))}
       <ProjectCommitListEmptyView />
@@ -105,7 +103,7 @@ export function ProjectCommitList(props: { projectID: number; refName?: string; 
 
   return (
     <List isLoading={isLoading} pagination={pagination} navigationTitle={props.navigationTitle}>
-      {(commits ?? []).map((commit) => (
+      {commits.map((commit) => (
         <CommitListItem key={commit.id} commit={commit} />
       ))}
       <ProjectCommitListEmptyView />

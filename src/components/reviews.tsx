@@ -21,10 +21,6 @@ export function ReviewList() {
   const { mrs, isLoading, performRefetch, pagination } = useMyReviews(project);
   const { isShowingDetail, toggleListDetails } = useMRListDetails();
 
-  if (isLoading && mrs === undefined) {
-    return <List isLoading={true} searchBarPlaceholder="" />;
-  }
-
   return (
     <List
       searchBarPlaceholder="Filter Reviews by name..."
@@ -41,7 +37,7 @@ export function ReviewList() {
         </ActionPanel>
       }
     >
-      {mrs?.map((mergeRequest) => (
+      {mrs.map((mergeRequest) => (
         <MRListItem
           key={mergeRequest.id}
           mr={mergeRequest}
@@ -59,7 +55,7 @@ export function useMyReviews(
   project?: Project | undefined,
   labels: string[] | undefined = undefined,
 ): {
-  mrs: MergeRequest[] | undefined;
+  mrs: MergeRequest[];
   isLoading: boolean;
   error: string | undefined;
   performRefetch: () => void;
@@ -77,7 +73,7 @@ export function useMyReviews(
       scope: MRScope.reviews_for_me,
       ...(labels && { labels }) }) });
   return {
-    mrs: project ? raw?.filter((mergeRequest) => mergeRequest.project_id === project.id) : raw,
+    mrs: project ? raw.filter((mergeRequest) => mergeRequest.project_id === project.id) : raw,
     isLoading,
     error,
     performRefetch,

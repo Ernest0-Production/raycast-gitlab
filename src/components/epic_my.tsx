@@ -8,10 +8,7 @@ import { EpicListItem } from "./epics";
 import { GroupInfo, useMyGroups } from "./groups";
 import { getTextIcon } from "../icons";
 
-function GroupListDropDown(props: { groupsInfo?: GroupInfo; onChange?: (newValue: string) => void }) {
-  if (!props.groupsInfo?.groups) {
-    return null;
-  }
+function GroupListDropDown(props: { groupsInfo: GroupInfo; onChange?: (newValue: string) => void }) {
   return (
     <List.Dropdown tooltip="Group" onChange={props.onChange}>
       <List.Dropdown.Item title="All Groups" value={""} />
@@ -44,10 +41,11 @@ export function MyEpicList(props: { scope: EpicScope; state: EpicState }) {
         include_descendant_groups: true,
         include_ancestor_groups: getPreferences().includeEpicAncestor });
     },
-    [props.scope, props.state, selectedGroupID]
+    [props.scope, props.state, selectedGroupID],
+    { initialData: [] },
   );
 
-  const epics: Epic[] = searchData<Epic>(data ?? [], { search: searchText || "", keys: ["title"], limit: 50 });
+  const epics: Epic[] = searchData<Epic>(data, { search: searchText || "", keys: ["title"], limit: 50 });
   return (
     <List
       searchBarPlaceholder="Filter Epics by Name..."
@@ -57,8 +55,8 @@ export function MyEpicList(props: { scope: EpicScope; state: EpicState }) {
       searchBarAccessory={<GroupListDropDown groupsInfo={groupsinfo} onChange={setSelectedGroupID} />}
     >
       <List.Section
-        title={data ? (searchText && searchText.length > 0 ? "Search Results" : "Recent Epics") : undefined}
-        subtitle={data ? `${epics.length}` : undefined}
+        title={searchText && searchText.length > 0 ? "Search Results" : "Recent Epics"}
+        subtitle={`${epics.length}`}
       >
         {epics.map((epic) => (
           <EpicListItem key={epic.id} epic={epic} displayGroup={displayGroup} onChangeDisplayGroup={setDisplayGroup} />

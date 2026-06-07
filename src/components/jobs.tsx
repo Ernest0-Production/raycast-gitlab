@@ -2,7 +2,7 @@ import { Action, ActionPanel, List, Icon, Image, Color } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
 import { getGitLabGQL, gitlab } from "../common";
 import { gql } from "@apollo/client";
-import { copyShortcut, getErrorMessage, getIdFromGqlId } from "../utils";
+import { copyShortcut, getIdFromGqlId } from "../utils";
 import {
   CancelJobAction,
   DownloadJobArtifactsSubmenu,
@@ -239,11 +239,10 @@ export function useSearch(
   pipelineIID?: string | undefined,
 ): {
   stages?: Record<string, Job[]>;
-  error?: string;
   isLoading: boolean;
   refresh: () => void;
 } {
-  const { data, error, isLoading, revalidate } = usePromise(
+  const { data, isLoading, revalidate } = usePromise(
     async (fullPath: string, pid: number, piid?: string): Promise<Record<string, Job[]> | undefined> => {
       if (pid) {
         const jobs: RESTJob[] = await gitlab
@@ -297,7 +296,7 @@ export function useSearch(
     [projectFullPath, pipelineID, pipelineIID]
   );
 
-  return { stages: data, error: error ? getErrorMessage(error) : undefined, isLoading, refresh: revalidate };
+  return { stages: data, isLoading, refresh: revalidate };
 }
 
 interface Pipeline {
@@ -348,14 +347,13 @@ function useCommit(
   sha: string,
 ): {
   commit?: Commit;
-  error?: string;
   isLoading: boolean;
 } {
-  const { data, error, isLoading } = usePromise(
+  const { data, isLoading } = usePromise(
     (projectId: number, commitSha: string) =>
       gitlab.fetch(`projects/${projectId}/repository/commits/${commitSha}`).then((data) => data as Commit),
     [projectID, sha]
   );
 
-  return { commit: data, error: error ? getErrorMessage(error) : undefined, isLoading };
+  return { commit: data, isLoading };
 }

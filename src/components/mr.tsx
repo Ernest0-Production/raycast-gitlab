@@ -2,7 +2,7 @@ import { ActionPanel, List, Color, Detail, Action, Image, Icon, Keyboard } from 
 import { Group, MergeRequest, Project } from "../gitlabapi";
 import { GitLabIcons } from "../icons";
 import { useCallback, useMemo, useState } from "react";
-import { getErrorMessage, hashRecord, optimizeMarkdownText, Query, tokenizeQueryText } from "../utils";
+import { hashRecord, optimizeMarkdownText, Query, tokenizeQueryText } from "../utils";
 import { getMRDiscussionMetadataLabel, discussionStatsFromMergeRequest, useMRDiscussionStats } from "./mr_discussions";
 import { getMRStateListIcon } from "./mr_status";
 import { MRCopySection, MRItemActions, ShowMRCommitsAction, ShowMRPipelinesAction } from "./mr_actions";
@@ -199,9 +199,9 @@ export function MRList({
     >
       <List.Section
         title={scope == MRScope.assigned_to_me ? "Your Merge Requests" : "Created Recently"}
-        subtitle={mrs?.length.toString() || "0"}
+        subtitle={mrs.length.toString()}
       >
-        {mrs?.map((mergeRequest) => (
+        {mrs.map((mergeRequest) => (
           <MRListItem
             key={mergeRequest.id}
             mr={mergeRequest}
@@ -424,13 +424,12 @@ export function useMR(
   mrIID: number,
 ): {
   mr?: MergeRequest;
-  error?: string;
   isLoading: boolean;
 } {
-  const { data, error, isLoading } = usePromise(
+  const { data, isLoading } = usePromise(
     (proj: Project, iid: number) => fetchMergeRequestGqlByProjectIid(proj, iid),
     [project, mrIID]
   );
 
-  return { mr: data, error: error ? getErrorMessage(error) : undefined, isLoading };
+  return { mr: data, isLoading };
 }

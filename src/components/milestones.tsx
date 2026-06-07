@@ -3,7 +3,7 @@ import { ActionPanel, Color, List } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
 import { getGitLabGQL } from "../common";
 import { Group, Project } from "../gitlabapi";
-import { getErrorMessage, getIdFromGqlId } from "../utils";
+import { getIdFromGqlId } from "../utils";
 import { GitLabOpenInBrowserAction } from "./actions";
 
 const GET_MILESTONES = gql`
@@ -138,10 +138,9 @@ export function useSearch(
   isGroup: boolean,
 ): {
   milestones: MilestoneListEntry[];
-  error?: string;
   isLoading: boolean;
 } {
-  const { data, error, isLoading } = usePromise(
+  const { data, isLoading } = usePromise(
     async (fullPath: string, group: boolean): Promise<MilestoneListEntry[]> => {
       const data = await getGitLabGQL().client.query({
         query: group ? GET_GROUP_MILESTONES : GET_MILESTONES,
@@ -161,5 +160,5 @@ export function useSearch(
     },
     [projectFullPath, isGroup]
   );
-  return { milestones: data ?? [], error: error ? getErrorMessage(error) : undefined, isLoading };
+  return { milestones: data ?? [], isLoading };
 }

@@ -446,10 +446,8 @@ export function EventList() {
       return fetchEventsWithProjects(params);
     },
     [scope],
+    { initialData: [] },
   );
-  if (!data) {
-    return <List isLoading={true} />;
-  }
   return (
     <List
       onSearchTextChange={setSearchText}

@@ -2,7 +2,6 @@ import { List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useRef } from "react";
 import { gitlab } from "../../common";
-import { getErrorMessage } from "../../utils";
 import { fetchMRCommitsGqlPage } from "./commits_gql";
 import { Commit } from "./types";
 
@@ -15,9 +14,8 @@ export function usePaginatedProjectCommits(options: {
   execute?: boolean;
   keepPreviousData?: boolean;
 }): {
-  commits: Commit[] | undefined;
+  commits: Commit[];
   isLoading: boolean;
-  error: string | undefined;
   performRefetch: () => void;
   pagination: ListPagination;
 } {
@@ -26,7 +24,7 @@ export function usePaginatedProjectCommits(options: {
   const refNameRef = useRef(options.refName);
   refNameRef.current = options.refName;
 
-  const { data, isLoading, error, revalidate, pagination } = useCachedPromise(
+  const { data, isLoading, revalidate, pagination } = useCachedPromise(
     (cacheKey: string) => async (paginationOptions: { page: number }) => {
       void cacheKey;
       const params: Record<string, string> = {};
@@ -46,13 +44,13 @@ export function usePaginatedProjectCommits(options: {
     {
       execute: options.execute,
       keepPreviousData: options.keepPreviousData,
+      initialData: [],
     },
   );
 
   return {
     commits: data,
     isLoading,
-    error: error ? getErrorMessage(error) : undefined,
     performRefetch: revalidate,
     pagination,
   };
@@ -65,9 +63,8 @@ export function usePaginatedMergeRequestCommits(options: {
   execute?: boolean;
   keepPreviousData?: boolean;
 }): {
-  commits: Commit[] | undefined;
+  commits: Commit[];
   isLoading: boolean;
-  error: string | undefined;
   performRefetch: () => void;
   pagination: ListPagination;
 } {
@@ -76,7 +73,7 @@ export function usePaginatedMergeRequestCommits(options: {
   const mrIIDRef = useRef(options.mrIID);
   mrIIDRef.current = options.mrIID;
 
-  const { data, isLoading, error, revalidate, pagination } = useCachedPromise(
+  const { data, isLoading, revalidate, pagination } = useCachedPromise(
     (cacheKey: string) => async (paginationOptions: { page: number }) => {
       const project = await gitlab.getProject(projectIDRef.current);
       const { commits, hasMore } = await fetchMRCommitsGqlPage({
@@ -91,13 +88,13 @@ export function usePaginatedMergeRequestCommits(options: {
     {
       execute: options.execute,
       keepPreviousData: options.keepPreviousData,
+      initialData: [],
     },
   );
 
   return {
     commits: data,
     isLoading,
-    error: error ? getErrorMessage(error) : undefined,
     performRefetch: revalidate,
     pagination,
   };

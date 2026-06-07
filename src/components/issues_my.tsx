@@ -19,7 +19,7 @@ import { MyProjectsDropdown } from "./project";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 function MyIssueList(props: {
-  issues: Issue[] | undefined;
+  issues: Issue[];
   isLoading: boolean;
   title?: string;
   performRefetch: () => void;
@@ -35,8 +35,8 @@ function MyIssueList(props: {
       searchBarAccessory={props.searchBarAccessory}
       throttle
     >
-      <List.Section title={props.title} subtitle={props.issues?.length.toString() || ""}>
-        {props.issues?.map((issue) => (
+      <List.Section title={props.title} subtitle={props.issues.length.toString()}>
+        {props.issues.map((issue) => (
           <IssueListItem key={issue.id} issue={issue} refreshData={props.performRefetch} />
         ))}
       </List.Section>
@@ -51,7 +51,7 @@ export function MyIssues(props: { scope: IssueScope; state: IssueState }) {
   return (
     <MyIssueList
       isLoading={isLoading}
-      issues={project ? raw?.filter((issue) => issue.project_id === project.id) : raw}
+      issues={project ? raw.filter((issue) => issue.project_id === project.id) : raw}
       title={props.scope == IssueScope.assigned_to_me ? "Your Assigned Issues" : "Your Recently Created Issues"}
       performRefetch={performRefetch}
       searchBarAccessory={<MyProjectsDropdown onChange={setProject} />}
@@ -64,7 +64,7 @@ export function useMyIssues(
   state: IssueState,
   params?: Record<string, any>,
 ): {
-  issues: Issue[] | undefined;
+  issues: Issue[];
   isLoading: boolean;
   error: string | undefined;
   performRefetch: () => void;
@@ -78,11 +78,12 @@ export function useMyIssues(
       scope: IssueScope,
       state: IssueState,
       params: Record<string, any> | undefined,
-    ): Promise<Issue[] | undefined> => {
+    ): Promise<Issue[]> => {
       const apiParams = { state, scope, ...(params || {}) };
       return gitlab.getIssues(apiParams, undefined, scope === IssueScope.assigned_to_me && state === IssueState.opened);
     },
-    [scope, state, params]
+    [scope, state, params],
+    { initialData: [] },
   );
   return { issues, isLoading, error: error ? getErrorMessage(error) : undefined, performRefetch: revalidate };
 }

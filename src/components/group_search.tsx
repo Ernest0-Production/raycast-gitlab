@@ -3,7 +3,6 @@ import { usePromise } from "@raycast/utils";
 import { useState } from "react";
 import { gitlab } from "../common";
 import { Group } from "../gitlabapi";
-import { getErrorMessage } from "../utils";
 import { GroupListEmptyView, GroupListItem } from "./groups";
 
 export function GroupSearchList() {
@@ -29,12 +28,11 @@ export function GroupSearchList() {
 
 export function useSearch(query: string | undefined): {
   groups?: Group[];
-  error?: string;
   isLoading: boolean;
 } {
-  const { data, error, isLoading } = usePromise(
+  const { data, isLoading } = usePromise(
     (searchQuery: string) => gitlab.getGroups({ searchText: searchQuery, searchIn: "title" }),
     [query ?? ""]
   );
-  return { groups: data, error: error ? getErrorMessage(error) : undefined, isLoading };
+  return { groups: data, isLoading };
 }

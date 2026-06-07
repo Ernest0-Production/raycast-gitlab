@@ -48,9 +48,9 @@ export default function MenuCommand() {
       isLoading={isLoading}
       title={
         preferences.showtext
-          ? (issues?.length || 0) <= 0
+          ? issues.length <= 0
             ? undefined
-            : `${issues?.length || 0}`
+            : `${issues.length}`
           : undefined
       }
       icon={{ source: "issues.svg", tintColor: Color.PrimaryText }}
@@ -70,7 +70,7 @@ export default function MenuCommand() {
             <MenuBarItem title={`... ${hidden} more assigned`} onAction={() => launchMyIssues()} />
           )}
         >
-          {issues?.map((issue) => (
+          {issues.map((issue) => (
             <MenuBarItem
               key={issue.iid}
               icon={{

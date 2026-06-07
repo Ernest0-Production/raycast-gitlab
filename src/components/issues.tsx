@@ -5,7 +5,7 @@ import { usePromise } from "@raycast/utils";
 import { getGitLabGQL, gitlab } from "../common";
 import { Group, Issue, Project } from "../gitlabapi";
 import { GitLabIcons } from "../icons";
-import { capitalizeFirstLetter, formatDate, formatDateTime, getErrorMessage, optimizeMarkdownText, Query, tokenizeQueryText } from "../utils";
+import { capitalizeFirstLetter, formatDate, formatDateTime, optimizeMarkdownText, Query, tokenizeQueryText } from "../utils";
 import { IssueItemActions } from "./issue_actions";
 import { GitLabOpenInBrowserAction } from "./actions";
 import { userIcon, userTagOnAction } from "./users";
@@ -124,10 +124,9 @@ export function IssueDetail(props: { issue: Issue }) {
 
 function useDetail(issueID: number): {
   issueDetail?: IssueDetailData;
-  error?: string;
   isLoading: boolean;
 } {
-  const { data, error, isLoading } = usePromise(
+  const { data, isLoading } = usePromise(
     async (issueId: number): Promise<IssueDetailData> => {
       const data = await getGitLabGQL().client.query({
         query: GET_ISSUE_DETAIL,
@@ -142,7 +141,7 @@ function useDetail(issueID: number): {
     { execute: issueID > 0 },
   );
 
-  return { issueDetail: data, error: error ? getErrorMessage(error) : undefined, isLoading };
+  return { issueDetail: data, isLoading };
 }
 
 export function IssueListItem(props: { issue: Issue; refreshData: () => void }) {
@@ -330,11 +329,10 @@ export function useSearch(
   group?: Group,
 ): {
   issues?: Issue[];
-  error?: string;
   isLoading: boolean;
   refresh: () => void;
 } {
-  const { data, error, isLoading, revalidate } = usePromise(
+  const { data, isLoading, revalidate } = usePromise(
     async (
       queryText: string,
       issueScope: IssueScope,
@@ -355,7 +353,7 @@ export function useSearch(
     [query ?? "", scope, state, project, group]
   );
 
-  return { issues: data, error: error ? getErrorMessage(error) : undefined, isLoading, refresh: revalidate };
+  return { issues: data, isLoading, refresh: revalidate };
 }
 
 export function useIssue(
@@ -363,13 +361,12 @@ export function useIssue(
   issueID: number,
 ): {
   issue?: Issue;
-  error?: string;
   isLoading: boolean;
 } {
-  const { data, error, isLoading } = usePromise(
+  const { data, isLoading } = usePromise(
     (projectId: number, issueId: number) => gitlab.getIssue(projectId, issueId, {}),
     [projectID, issueID]
   );
 
-  return { issue: data, error: error ? getErrorMessage(error) : undefined, isLoading };
+  return { issue: data, isLoading };
 }

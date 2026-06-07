@@ -93,7 +93,7 @@ export function PipelineList(props: { projectFullPath: string; navigationTitle?:
       actions={
         <ActionPanel>
           <ActionPanel.Section>
-            {pipelines?.[0] && (
+            {pipelines[0] && (
               <RunPipelineAction
                 projectId={pipelines[0].projectId}
                 ref={pipelines[0].ref}
@@ -106,7 +106,7 @@ export function PipelineList(props: { projectFullPath: string; navigationTitle?:
       }
     >
       <List.Section title="Pipelines">
-        {(pipelines ?? []).map((pipeline) => (
+        {pipelines.map((pipeline) => (
           <PipelineListItem
             key={pipeline.id}
             pipeline={pipeline}

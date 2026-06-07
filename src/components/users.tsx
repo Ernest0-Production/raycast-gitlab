@@ -3,7 +3,6 @@ import { usePromise } from "@raycast/utils";
 import { User } from "../gitlabapi";
 import { gitlab } from "../common";
 import { useState } from "react";
-import { getErrorMessage } from "../utils";
 import { GitLabOpenInBrowserAction } from "./actions";
 
 export function UserList() {
@@ -40,14 +39,13 @@ export function UserListItem(props: { user: User }) {
 
 export function useSearch(query: string | undefined): {
   users?: User[];
-  error?: string;
   isLoading: boolean;
 } {
-  const { data, error, isLoading } = usePromise(
+  const { data, isLoading } = usePromise(
     (searchQuery: string) => gitlab.getUsers({ searchText: searchQuery, searchIn: "title" }),
     [query ?? ""]
   );
-  return { users: data, error: error ? getErrorMessage(error) : undefined, isLoading };
+  return { users: data, isLoading };
 }
 
 export function userIcon(user: User): Image.ImageLike {

@@ -10,12 +10,14 @@ export function ProjectLabelList(props: { project: Project; navigationTitle?: st
     (projectId: number) => gitlab.getProjectLabels(projectId),
     [props.project.id],
     {
-      keepPreviousData: true },
+      keepPreviousData: true,
+      initialData: [],
+    },
   );
 
   return (
     <LabelList
-      labels={searchData<Label[]>(data ?? [], { search: searchText || "", keys: ["name"], limit: 50 })}
+      labels={searchData<Label[]>(data, { search: searchText || "", keys: ["name"], limit: 50 })}
       onSearchTextChange={setSearchText}
       isLoading={isLoading}
       throttle={true}

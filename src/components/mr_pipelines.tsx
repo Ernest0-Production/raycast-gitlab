@@ -20,8 +20,8 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
         <ActionPanel>
           <ActionPanel.Section>
             <RunPipelineAction
-              projectId={pipelines?.[0]?.projectId ?? `${props.mr.project_id}`}
-              ref={pipelines?.[0]?.ref ?? props.mr.source_branch}
+              projectId={pipelines[0]?.projectId ?? `${props.mr.project_id}`}
+              ref={pipelines[0]?.ref ?? props.mr.source_branch}
               onFinished={performRefetch}
               shortcut={{ modifiers: ["cmd"], key: "n" }}
             />
@@ -29,8 +29,8 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
         </ActionPanel>
       }
     >
-      <List.Section title="Pipelines" subtitle={pipelines?.length ? `${pipelines.length}` : undefined}>
-        {(pipelines ?? []).map((pipeline) => (
+      <List.Section title="Pipelines" subtitle={pipelines.length ? `${pipelines.length}` : undefined}>
+        {pipelines.map((pipeline) => (
           <PipelineListItem
             key={pipeline.id}
             pipeline={pipeline}
@@ -40,7 +40,7 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
           />
         ))}
       </List.Section>
-      {!isLoading && (!pipelines || pipelines.length === 0) && (
+      {!isLoading && pipelines.length === 0 && (
         <List.EmptyView title="No Pipelines" description="This merge request has no pipelines yet." />
       )}
     </List>

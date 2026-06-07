@@ -17,7 +17,7 @@ import { MyProjectsDropdown } from "./project";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 function MyMRList(props: {
-  mrs: MergeRequest[] | undefined;
+  mrs: MergeRequest[];
   isLoading: boolean;
   title?: string;
   performRefetch: () => void;
@@ -53,8 +53,8 @@ function MyMRList(props: {
         </ActionPanel>
       }
     >
-      <List.Section title={props.title} subtitle={props.mrs?.length.toString() || ""}>
-        {props.mrs?.map((mergeRequest) => (
+      <List.Section title={props.title} subtitle={props.mrs.length.toString()}>
+        {props.mrs.map((mergeRequest) => (
           <MRListItem
             key={mergeRequest.id}
             mr={mergeRequest}
@@ -83,7 +83,7 @@ export function MyMergeRequests(props: {
   return (
     <MyMRList
       isLoading={isLoading}
-      mrs={project ? raw?.filter((mergeRequest) => mergeRequest.project_id === project.id) : raw}
+      mrs={project ? raw.filter((mergeRequest) => mergeRequest.project_id === project.id) : raw}
       title={
         props.scope == MRScope.assigned_to_me ? "Your assigned Merge Requests" : "Your Recently Created Merge Requests"
       }
@@ -102,7 +102,7 @@ export function useMyMergeRequests(
   project: Project | undefined,
   labels: string[] | undefined = undefined,
 ): {
-  mrs: MergeRequest[] | undefined;
+  mrs: MergeRequest[];
   isLoading: boolean;
   error: string | undefined;
   performRefetch: () => void;

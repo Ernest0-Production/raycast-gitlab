@@ -48,7 +48,7 @@ export default function TodosMenuBarCommand(): React.ReactNode | null {
         maxChildren={getBoundedPreferenceNumber(maxtodos)}
         moreElement={(hidden) => <MenuBarExtra.Item title={`... ${hidden} more`} onAction={launchTodosCommand} />}
       >
-        {todos?.map((todo) => (
+        {todos.map((todo) => (
           <MenuBarItem
             key={todo.id}
             title={todo.title ? todo.title : "?"}

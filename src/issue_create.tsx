@@ -38,12 +38,13 @@ function IssueForm() {
   const [selectedProject, setSelectedProject] = useState<string>();
   const { data: projects, isLoading: isLoadingProjects } = useCachedPromise(
     async (): Promise<Project[]> => (await gitlab.getUserProjects({}, true)) || [],
-    []
+    [],
+    { initialData: [] },
   );
   const { projectinfo, isLoadingProjectInfo } = useProject(selectedProject);
   let project: Project | undefined;
   if (selectedProject) {
-    project = projects?.find((candidate) => candidate.id.toString() === selectedProject);
+    project = projects.find((candidate) => candidate.id.toString() === selectedProject);
   }
   const { milestoneInfo, isLoadingMilestoneInfo } = useMilestones(project?.group_id);
 
@@ -58,7 +59,7 @@ function IssueForm() {
         </ActionPanel>
       }
     >
-      <ProjectDropdown projects={projects || []} setSelectedProject={setSelectedProject} value={selectedProject} />
+      <ProjectDropdown projects={projects} setSelectedProject={setSelectedProject} value={selectedProject} />
       <Form.TextField id="title" title="Title" placeholder="Enter title" />
       <Form.TextArea id="description" title="Description" placeholder="Enter description" />
       <Form.TagPicker id="assignee_ids" title="Assignees" placeholder="Type or choose an assignee">
@@ -109,7 +110,7 @@ function ProjectDropdown(props: {
         props.setSelectedProject(newValue);
       }}
     >
-      {props.projects?.map((project) => (
+      {props.projects.map((project) => (
         <ProjectDropdownItem key={project.id} project={project} />
       ))}
     </Form.Dropdown>

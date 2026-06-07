@@ -23,7 +23,7 @@ export function usePaginatedMergeRequests(options: {
   execute?: boolean;
   keepPreviousData?: boolean;
 }): {
-  mrs: MergeRequest[] | undefined;
+  mrs: MergeRequest[];
   isLoading: boolean;
   error: string | undefined;
   performRefetch: () => void;
@@ -53,7 +53,11 @@ export function usePaginatedMergeRequests(options: {
       return { data: mergeRequests, hasMore };
     },
     [options.cacheKey],
-    { execute: options.execute, keepPreviousData: options.keepPreviousData },
+    {
+      execute: options.execute,
+      keepPreviousData: options.keepPreviousData,
+      initialData: [],
+    },
   );
 
   return {

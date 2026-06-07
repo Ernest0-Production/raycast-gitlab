@@ -3,7 +3,7 @@ import { useCachedPromise } from "@raycast/utils";
 import { useState } from "react";
 import { gitlab } from "../common";
 import { Project, searchData } from "../gitlabapi";
-import { getErrorMessage, getFirstChar, projectIconUrl } from "../utils";
+import { getFirstChar, projectIconUrl } from "../utils";
 import {
   CloneProjectInGitPod,
   CloneProjectInVSCodeAction,
@@ -109,9 +109,10 @@ export function ProjectList({ membership = true, starred = false }: ProjectListP
       return [];
     },
     [starred, membership],
+    { initialData: [] },
   );
 
-  const projects: Project[] = searchData<Project[]>(data ?? [], {
+  const projects: Project[] = searchData<Project[]>(data, {
     search: searchText || "",
     keys: ["name_with_namespace"],
     limit: 50,
@@ -138,14 +139,14 @@ export function ProjectList({ membership = true, starred = false }: ProjectListP
 }
 
 export function useMyProjects(): {
-  projects: Project[] | undefined;
-  error?: string;
+  projects: Project[];
   isLoading?: boolean;
 } {
-  const { data, error, isLoading } = useCachedPromise(() => gitlab.getUserProjects({ search: "" }, true), []);
+  const { data, isLoading } = useCachedPromise(() => gitlab.getUserProjects({ search: "" }, true), [], {
+    initialData: [],
+  });
   return {
     projects: data,
-    error: error ? getErrorMessage(error) : undefined,
     isLoading,
   };
 }
@@ -170,37 +171,34 @@ export function MyProjectsDropdown(props: {
   value?: string;
   storeValue?: boolean;
   includeAllItem?: boolean;
-}): React.ReactNode | null {
+}): React.ReactNode {
   const { projects: hookProjects } = useMyProjects();
   const myprojects = props.projects ?? hookProjects;
   const includeAllItem = props.includeAllItem !== false;
-  if (myprojects) {
-    return (
-      <List.Dropdown
-        tooltip="Select Project"
-        value={props.value}
-        storeValue={props.storeValue}
-        onChange={(newValue) => {
-          if (includeAllItem && newValue === "-") {
-            props.onChange(undefined);
-            return;
-          }
-          const selectedProject = myprojects.find((project) => `${project.id}` === newValue);
-          props.onChange(selectedProject);
-        }}
-      >
-        {includeAllItem && (
-          <List.Dropdown.Section>
-            <List.Dropdown.Item title="All Projects" value="-" />
-          </List.Dropdown.Section>
-        )}
+  return (
+    <List.Dropdown
+      tooltip="Select Project"
+      value={props.value}
+      storeValue={props.storeValue}
+      onChange={(newValue) => {
+        if (includeAllItem && newValue === "-") {
+          props.onChange(undefined);
+          return;
+        }
+        const selectedProject = myprojects.find((project) => `${project.id}` === newValue);
+        props.onChange(selectedProject);
+      }}
+    >
+      {includeAllItem && (
         <List.Dropdown.Section>
-          {myprojects.map((project) => (
-            <MyProjectsDropdownItem key={`${project.id}`} project={project} />
-          ))}
+          <List.Dropdown.Item title="All Projects" value="-" />
         </List.Dropdown.Section>
-      </List.Dropdown>
-    );
-  }
-  return null;
+      )}
+      <List.Dropdown.Section>
+        {myprojects.map((project) => (
+          <MyProjectsDropdownItem key={`${project.id}`} project={project} />
+        ))}
+      </List.Dropdown.Section>
+    </List.Dropdown>
+  );
 }

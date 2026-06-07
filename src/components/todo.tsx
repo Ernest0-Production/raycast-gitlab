@@ -72,12 +72,12 @@ export function TodoList() {
       throttle={true}
       searchBarAccessory={<MyProjectsDropdown onChange={setProject} />}
     >
-      <List.Section title="Todos" subtitle={`${todos?.length}`}>
-        {todos?.map((todo) => (
+      <List.Section title="Todos" subtitle={`${todos.length}`}>
+        {todos.map((todo) => (
           <TodoListItem key={todo.id} todo={todo} refreshData={refreshAll} />
         ))}
       </List.Section>
-      <TodoListEmptyView searchMode={todos && todos.length > 0} />
+      <TodoListEmptyView searchMode={todos.length > 0} />
     </List>
   );
 }

@@ -111,12 +111,12 @@ export function SearchMyMergeRequests() {
   const { isShowingDetail, toggleListDetails } = useMRListDetails();
 
   const project = useMemo(
-    () => myprojects?.find((candidate) => `${candidate.id}` === projectId),
+    () => myprojects.find((candidate) => `${candidate.id}` === projectId),
     [myprojects, projectId],
   );
 
   useEffect(() => {
-    if (!myprojects?.length || projectId !== undefined) {
+    if (!myprojects.length || projectId !== undefined) {
       return;
     }
     setProjectId(`${myprojects[0].id}`);
@@ -202,7 +202,7 @@ export function SearchMyMergeRequests() {
                 .join(", ") || undefined
             }
           >
-            {(data ?? []).map((mergeRequest) => (
+            {data.map((mergeRequest) => (
               <MRListItem
                 key={mergeRequest.id}
                 mr={mergeRequest}

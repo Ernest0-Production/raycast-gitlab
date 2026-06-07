@@ -89,10 +89,11 @@ export function EpicList(props: { group: Group }) {
     async (groupID: number): Promise<Epic[]> => {
       return (await gitlab.fetch(`groups/${groupID}/epics`, { min_access_level: "30", state: "opened" }, true)) || [];
     },
-    [props.group.id]
+    [props.group.id],
+    { initialData: [] },
   );
 
-  const epics: Epic[] = searchData<Epic>(data ?? [], { search: searchText || "", keys: ["title"], limit: 50 });
+  const epics: Epic[] = searchData<Epic>(data, { search: searchText || "", keys: ["title"], limit: 50 });
   return (
     <List
       searchBarPlaceholder="Filter Epics by name..."
@@ -102,8 +103,8 @@ export function EpicList(props: { group: Group }) {
       navigationTitle={`Epics ${props.group.full_path}`}
     >
       <List.Section
-        title={data ? `Recent Epics ${epics.length}` : undefined}
-        subtitle={data ? `${epics.length}` : undefined}
+        title={`Recent Epics ${epics.length}`}
+        subtitle={`${epics.length}`}
       >
         {epics.map((epic) => (
           <EpicListItem key={epic.id} epic={epic} />
