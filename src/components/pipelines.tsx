@@ -1,6 +1,5 @@
 import { Action, ActionPanel, List, Icon, Color } from "@raycast/api";
-import { usePromise } from "@raycast/utils";
-import { getCIRefreshInterval, gitlab } from "../common";
+import { getCIRefreshInterval } from "../common";
 import { copyShortcut, formatDate, formatDateTime, showErrorToast } from "../utils";
 import { getCIJobStatusIcon, getMRPipelineStatusTooltip, JobList } from "./jobs";
 import {
@@ -98,32 +97,20 @@ export function PipelineListItem(props: {
   );
 }
 
-function useProjectPipelineRunContext(projectFullPath: string): {
-  projectId: string;
-  defaultBranch: string;
-} {
-  const { data } = usePromise(
-    async (fullPath: string) => {
-      const project = await gitlab.fetch(`projects/${encodeURIComponent(fullPath)}`);
-      return { projectId: `${project.id}`, defaultBranch: (project.default_branch as string) ?? "" };
-    },
-    [projectFullPath],
-    // Failure falls back to empty context below; no toast (matches the previous silent catch).
-    { onError: () => undefined },
-  );
-
-  return { projectId: data?.projectId ?? "", defaultBranch: data?.defaultBranch ?? "" };
-}
-
-export function PipelineList(props: { projectFullPath: string; navigationTitle?: string }) {
+export function PipelineList(props: {
+  projectFullPath: string;
+  projectId: number | string;
+  defaultBranch?: string;
+  navigationTitle?: string;
+}) {
   const cacheKey = `project_pipelines_${props.projectFullPath}`;
   const { pipelines, error, isLoading, performRefetch, pagination } = usePaginatedProjectPipelines({
     cacheKey,
     projectFullPath: props.projectFullPath,
   });
-  const { projectId, defaultBranch } = useProjectPipelineRunContext(props.projectFullPath);
+  const defaultBranch = props.defaultBranch ?? "";
   const runRef = pipelines?.[0]?.ref || defaultBranch;
-  const runProjectId = pipelines?.[0]?.projectId || projectId;
+  const runProjectId = pipelines?.[0]?.projectId || `${props.projectId}`;
 
   useInterval(() => {
     performRefetch();

@@ -1,7 +1,6 @@
 import { List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useRef } from "react";
-import { gitlab } from "../common";
 import { Pipeline } from "../gitlabapi";
 import { getErrorMessage } from "../utils";
 import { fetchMRPipelinesGqlPage, fetchProjectPipelinesGqlPage } from "./pipelines_gql";
@@ -47,7 +46,7 @@ export function usePaginatedProjectPipelines(options: {
 
 export function usePaginatedMRPipelines(options: {
   cacheKey: string;
-  projectID: number;
+  projectFullPath: string;
   mrIID: number;
   execute?: boolean;
   keepPreviousData?: boolean;
@@ -58,18 +57,17 @@ export function usePaginatedMRPipelines(options: {
   performRefetch: () => void;
   pagination: ListPagination;
 } {
-  const projectIDRef = useRef(options.projectID);
-  projectIDRef.current = options.projectID;
+  const projectFullPathRef = useRef(options.projectFullPath);
+  projectFullPathRef.current = options.projectFullPath;
   const mrIIDRef = useRef(options.mrIID);
   mrIIDRef.current = options.mrIID;
 
   const { data, isLoading, error, revalidate, pagination } = useCachedPromise(
     (cacheKey: string) => async (paginationOptions: { page: number }) => {
-      const project = await gitlab.getProject(projectIDRef.current);
       const { pipelines, hasMore } = await fetchMRPipelinesGqlPage({
         cacheKey,
         page: paginationOptions.page,
-        projectFullPath: project.fullPath,
+        projectFullPath: projectFullPathRef.current,
         mrIID: mrIIDRef.current,
       });
       return { data: pipelines, hasMore };

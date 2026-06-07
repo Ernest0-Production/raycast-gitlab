@@ -98,10 +98,6 @@ export function RetryPipelineAction(props: { pipeline: Pipeline; onRetryFinished
   );
 }
 
-export function resolvePipelineRunRef(pipeline: Pipeline, fallbackRef?: string): string {
-  return pipeline.ref || fallbackRef || "";
-}
-
 export function RunPipelineAction(props: {
   projectId: string | number;
   ref: string;
@@ -148,7 +144,7 @@ export function PipelineItemActions(props: {
   onDataChange?: () => void;
 }) {
   const pipeline = props.pipeline;
-  const runRef = resolvePipelineRunRef(pipeline, props.runRefFallback);
+  const runRef = pipeline.ref || props.runRefFallback || "";
   return (
     <React.Fragment>
       <RunPipelineAction

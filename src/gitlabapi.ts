@@ -1,7 +1,7 @@
 import Fuse from "fuse.js";
 import fetch, { Response } from "node-fetch";
 import { receiveLargeCachedObject } from "./cache";
-import { hashRecord } from "./utils";
+import { hashRecord, projectFullPathFromWebUrl } from "./utils";
 import util from "util";
 import fs from "fs";
 import { pipeline } from "stream";
@@ -258,10 +258,6 @@ function parseHeadPipelineFromJson(
   return headPipelineFromPipelineJson(mr.head_pipeline ?? mr.pipeline);
 }
 
-export function getMRHeadPipelineStatus(mr: MergeRequest | undefined): string | undefined {
-  return mr?.head_pipeline?.status;
-}
-
 function projectWebUrlFromMrWebUrl(webUrl: string): string {
   const index = webUrl.indexOf("/-/");
   return index > 1 ? webUrl.substring(0, index) : "";
@@ -272,6 +268,7 @@ export function jsonDataToMergeRequest(mr: GitLabMergeRequestJson): MergeRequest
     title: mr.title,
     web_url: mr.web_url,
     project_web_url: projectWebUrlFromMrWebUrl(mr.web_url),
+    project_full_path: projectFullPathFromWebUrl(projectWebUrlFromMrWebUrl(mr.web_url)),
     id: mr.id,
     iid: mr.iid,
     state: mr.state,
@@ -467,6 +464,7 @@ export class MergeRequest {
   public title = "";
   public description = "";
   public project_web_url = "";
+  public project_full_path = "";
   public web_url = "";
   public id = 0;
   public iid = 0;

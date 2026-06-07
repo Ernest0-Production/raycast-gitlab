@@ -1,14 +1,9 @@
 import { ActionPanel, List, Color, Detail, Action, Image, Icon, Keyboard } from "@raycast/api";
-import { getMRHeadPipelineStatus, Group, MergeRequest, Project } from "../gitlabapi";
+import { Group, MergeRequest, Project } from "../gitlabapi";
 import { GitLabIcons } from "../icons";
 import { useCallback, useMemo, useState } from "react";
 import { getErrorMessage, hashRecord, optimizeMarkdownText, Query, showErrorToast, tokenizeQueryText } from "../utils";
-import {
-  getMRDiscussionMetadataLabel,
-  discussionStatsFromMergeRequest,
-  formatMRDiscussionStatsLabel,
-  useMRDiscussionStats,
-} from "./mr_discussions";
+import { getMRDiscussionMetadataLabel, discussionStatsFromMergeRequest, useMRDiscussionStats } from "./mr_discussions";
 import { getMRStateListIcon } from "./mr_status";
 import { MRCopySection, MRItemActions, ShowMRCommitsAction, ShowMRPipelinesAction } from "./mr_actions";
 import { GitLabOpenInBrowserAction } from "./actions";
@@ -267,9 +262,11 @@ export function MRListItem(props: {
     : undefined;
 
   const showCIStatus = props.showCIStatus === undefined || props.showCIStatus === true;
-  const pipelineStatus = showCIStatus ? getMRHeadPipelineStatus(mr) : undefined;
+  const pipelineStatus = showCIStatus ? mr.head_pipeline?.status : undefined;
   const discussionStats = discussionStatsFromMergeRequest(mr);
-  const discussionAccessoryLabel = discussionStats ? formatMRDiscussionStatsLabel(discussionStats) : undefined;
+  const discussionAccessoryLabel = discussionStats
+    ? `${discussionStats.resolved}/${discussionStats.resolvableTotal}`
+    : undefined;
   const accessories: List.Item.Accessory[] = [];
   if (!isShowingDetail) {
     accessories.push(

@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { getGitLabGQL, gitlab } from "../common";
 import { Group, Label, MergeRequest, Project, User } from "../gitlabapi";
-import { getIdFromGqlId } from "../utils";
+import { getIdFromGqlId, projectFullPathFromWebUrl } from "../utils";
 import { MRScope, MRState } from "./mr";
 import { MROrderBy, MRSearchOrderBy } from "./mr_sort";
 
@@ -83,6 +83,7 @@ const MERGE_REQUEST_LIST_FIELDS = gql`
     description
     project {
       webUrl
+      fullPath
     }
   }
 `;
@@ -371,7 +372,7 @@ interface GqlMRListNode {
   resolvedDiscussionsCount?: number | null;
   resolvableDiscussionsCount?: number | null;
   description?: string | null;
-  project?: { webUrl: string } | null;
+  project?: { webUrl: string; fullPath?: string | null } | null;
   author?: GqlUserNode | null;
   assignees?: { nodes: GqlUserNode[] };
   reviewers?: { nodes: GqlUserNode[] };
@@ -483,6 +484,7 @@ export function gqlNodeToMergeRequest(node: GqlMRListNode): MergeRequest {
     project_id: node.targetProjectId,
     description: node.description ?? "",
     project_web_url: node.project?.webUrl ?? "",
+    project_full_path: node.project?.fullPath ?? projectFullPathFromWebUrl(node.project?.webUrl ?? ""),
     reference_full: node.reference ?? "",
     labels:
       node.labels?.nodes.map(

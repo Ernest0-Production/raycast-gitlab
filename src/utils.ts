@@ -28,6 +28,17 @@ export function projectIconUrl(project: Project): string | undefined {
   return result;
 }
 
+export function projectFullPathFromWebUrl(webUrl: string): string {
+  if (!webUrl) {
+    return "";
+  }
+  try {
+    return new URL(webUrl).pathname.replace(/^\//, "");
+  } catch {
+    return "";
+  }
+}
+
 export function getFirstChar(text: string): string {
   const firstChar = text.codePointAt(0);
 

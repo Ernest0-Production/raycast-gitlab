@@ -148,11 +148,6 @@ function resolveJobArtifactDownload(job: Job, artifact: JobArtifact): { url: str
   return undefined;
 }
 
-function localJobArtifactPath(downloadDir: string, job: Job, fileName: string): string {
-  const jobId = jobNumericId(job);
-  return path.join(downloadDir, `${jobId}-${path.basename(fileName)}`);
-}
-
 async function downloadJobArtifact(job: Job, artifact: JobArtifact) {
   const resolved = resolveJobArtifactDownload(job, artifact);
   if (!resolved) {
@@ -162,7 +157,7 @@ async function downloadJobArtifact(job: Job, artifact: JobArtifact) {
   const downloadDir = getArtifactDownloadDirectoryPreference();
   try {
     fs.mkdirSync(downloadDir, { recursive: true });
-    const localFilepath = localJobArtifactPath(downloadDir, job, resolved.fileName);
+    const localFilepath = path.join(downloadDir, `${jobNumericId(job)}-${path.basename(resolved.fileName)}`);
     await gitlab.downloadFile(resolved.url, { localFilepath });
     await open(localFilepath);
     showToast(Toast.Style.Success, "Downloaded artifact", path.basename(localFilepath));

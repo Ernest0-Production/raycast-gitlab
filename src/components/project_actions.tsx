@@ -140,14 +140,6 @@ export function ProjectDefaultActions(props: { project: Project }) {
   }
 }
 
-export function CopyProjectIDToClipboardAction(props: { project: Project }) {
-  return <Action.CopyToClipboard title="Copy Project ID" content={props.project.id} />;
-}
-
-export function CopyProjectUrlToClipboardAction(props: { project: Project }) {
-  return <Action.CopyToClipboard title="Copy Project URL" content={props.project.web_url} />;
-}
-
 function CloneUrlList(props: { project: Project }) {
   return (
     <List navigationTitle="Copy Clone URL">
@@ -239,7 +231,13 @@ export function OpenProjectPipelinesPushAction(props: { project: Project }) {
       title="Pipelines"
       shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
       icon={{ source: GitLabIcons.ci, tintColor: Color.PrimaryText }}
-      target={<PipelineList projectFullPath={props.project.fullPath} />}
+      target={
+        <PipelineList
+          projectFullPath={props.project.fullPath}
+          projectId={props.project.id}
+          defaultBranch={props.project.default_branch}
+        />
+      }
     />
   );
 }

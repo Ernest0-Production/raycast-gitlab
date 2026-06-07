@@ -49,10 +49,6 @@ export function discussionStatsFromMergeRequest(mr: MergeRequest): MRDiscussionS
   return { resolved, resolvableTotal };
 }
 
-export function formatMRDiscussionStatsLabel(stats: MRDiscussionStats): string {
-  return `${stats.resolved}/${stats.resolvableTotal}`;
-}
-
 export function getMRDiscussionMetadataLabel(
   mr: MergeRequest,
   stats: MRDiscussionStats | undefined,
@@ -62,7 +58,7 @@ export function getMRDiscussionMetadataLabel(
     return "Loading...";
   }
   if (stats && stats.resolvableTotal > 0) {
-    return formatMRDiscussionStatsLabel(stats);
+    return `${stats.resolved}/${stats.resolvableTotal}`;
   }
   return undefined;
 }

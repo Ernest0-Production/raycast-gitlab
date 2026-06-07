@@ -1,7 +1,7 @@
-import { Color, Detail, Icon, List } from "@raycast/api";
+import { Color, Detail, Icon, Image, List } from "@raycast/api";
 import { MergeRequest, User } from "../gitlabapi";
 import { capitalizeFirstLetter, formatDate } from "../utils";
-import { getMRStateMetadataIcon } from "./mr_status";
+import { getMRStateListIcon } from "./mr_status";
 import { userIcon, userTagOnAction } from "./users";
 
 function stateColor(state: string): Color.ColorLike {
@@ -179,13 +179,18 @@ function DiscussionsMetadataLabel(props: {
 
 export function MRDetailMetadata(props: { mr: MergeRequest; discussionLabel?: string }) {
   const mr = props.mr;
+  const stateListIcon = getMRStateListIcon(mr.state);
+  const stateIcon =
+    stateListIcon && typeof stateListIcon === "object" && "value" in stateListIcon
+      ? (stateListIcon.value as Image.ImageLike)
+      : (stateListIcon as Image.ImageLike);
   return (
     <Detail.Metadata>
       <Detail.Metadata.TagList title="Status">
         <Detail.Metadata.TagList.Item
           text={capitalizeFirstLetter(mr.state)}
           color={stateColor(mr.state)}
-          icon={getMRStateMetadataIcon(mr.state)}
+          icon={stateIcon}
         />
       </Detail.Metadata.TagList>
       <AuthorDetailMetadata mr={mr} />

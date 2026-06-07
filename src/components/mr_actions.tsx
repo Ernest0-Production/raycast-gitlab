@@ -186,26 +186,18 @@ function MRTodoAction(props: {
   );
 }
 
-export function formatMRMarkdownClipboard(mr: MergeRequest): string {
-  return `[${mr.title}](${mr.web_url})`;
-}
-
-export function CopyMRMarkdownAction(props: { mr: MergeRequest }): React.ReactElement {
-  return (
-    <Action.CopyToClipboard
-      title="Copy Markdown"
-      content={formatMRMarkdownClipboard(props.mr)}
-      shortcut={copyMarkdownShortcut}
-    />
-  );
-}
-
 export function MRCopySection(props: { mr: MergeRequest; showCopyMarkdown?: boolean }): React.ReactElement {
   const mr = props.mr;
   return (
     <ActionPanel.Section>
       <Action.CopyToClipboard title="Copy URL" content={mr.web_url} shortcut={copyShortcut} />
-      {props.showCopyMarkdown ? <CopyMRMarkdownAction mr={mr} /> : null}
+      {props.showCopyMarkdown ? (
+        <Action.CopyToClipboard
+          title="Copy Markdown"
+          content={`[${mr.title}](${mr.web_url})`}
+          shortcut={copyMarkdownShortcut}
+        />
+      ) : null}
     </ActionPanel.Section>
   );
 }

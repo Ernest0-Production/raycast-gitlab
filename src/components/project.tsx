@@ -1,4 +1,4 @@
-import { ActionPanel, Color, Icon, Image, List } from "@raycast/api";
+import { Action, ActionPanel, Color, Icon, Image, List } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { useState } from "react";
 import { gitlab } from "../common";
@@ -7,7 +7,6 @@ import { getErrorMessage, getFirstChar, projectIconUrl, showErrorToast } from ".
 import {
   CloneProjectInGitPod,
   CloneProjectInVSCodeAction,
-  CopyProjectIDToClipboardAction,
   CopyCloneUrlToClipboardAction,
   OpenProjectBranchesPushAction,
   OpenProjectIssuesPushAction,
@@ -20,7 +19,6 @@ import {
   OpenProjectWikiInBrowserAction,
   ProjectDefaultActions,
   ShowProjectLabels,
-  CopyProjectUrlToClipboardAction,
   CreateNewProjectIssuePushAction,
   ShowProjectReadmeAction,
 } from "./project_actions";
@@ -61,8 +59,8 @@ export function ProjectListItem(props: { project: Project; nameOnly?: boolean })
             <ProjectDefaultActions project={project} />
           </ActionPanel.Section>
           <ActionPanel.Section>
-            <CopyProjectIDToClipboardAction project={project} />
-            <CopyProjectUrlToClipboardAction project={project} />
+            <Action.CopyToClipboard title="Copy Project ID" content={project.id} />
+            <Action.CopyToClipboard title="Copy Project URL" content={project.web_url} />
             <CopyCloneUrlToClipboardAction shortcut={{ modifiers: ["cmd"], key: "u" }} project={project} />
           </ActionPanel.Section>
           <ActionPanel.Section>

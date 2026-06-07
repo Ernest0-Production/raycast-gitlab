@@ -1,36 +1,22 @@
 import { ActionPanel, List } from "@raycast/api";
-import { useCachedPromise } from "@raycast/utils";
-import { getCIRefreshInterval, gitlab } from "../common";
-import { MergeRequest, Project } from "../gitlabapi";
-import { getErrorMessage, showErrorToast } from "../utils";
+import { getCIRefreshInterval } from "../common";
+import { MergeRequest } from "../gitlabapi";
+import { showErrorToast } from "../utils";
 import { PipelineListItem } from "./pipelines";
 import { RunPipelineAction } from "./pipeline_actions";
 import { usePaginatedMRPipelines } from "./pipelines_data";
 import useInterval from "use-interval";
 
-function useMRProject(mr: MergeRequest): {
-  project: Project | undefined;
-  isLoading: boolean | undefined;
-  error: string | undefined;
-} {
-  const { data, isLoading, error } = useCachedPromise(
-    (projectID: number) => gitlab.getProject(projectID),
-    [mr.project_id],
-    { onError: () => undefined },
-  );
-  return { project: data, isLoading, error: error ? getErrorMessage(error) : undefined };
-}
-
 export function MRPipelineList(props: { mr: MergeRequest }) {
   const { mr } = props;
   const navigationTitle = `Pipelines · ${mr.reference_full}`;
   const cacheKey = `mr_pipelines_${mr.project_id}_${mr.iid}`;
+  const projectFullPath = mr.project_full_path;
   const { pipelines, isLoading, error, performRefetch, pagination } = usePaginatedMRPipelines({
     cacheKey,
-    projectID: mr.project_id,
+    projectFullPath,
     mrIID: mr.iid,
   });
-  const { project, isLoading: projectLoading, error: projectError } = useMRProject(mr);
 
   useInterval(() => {
     performRefetch();
@@ -39,19 +25,13 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
   if (error) {
     showErrorToast(error, "Could not fetch Pipelines");
   }
-  if (projectError) {
-    showErrorToast(projectError, "Could not fetch Project");
-  }
 
-  const projectFullPath = project?.fullPath ?? "";
-
-  const listLoading = isLoading || projectLoading === undefined || projectLoading;
   const runRef = pipelines?.[0]?.ref || mr.source_branch;
   const runProjectId = pipelines?.[0]?.projectId || `${mr.project_id}`;
 
   return (
     <List
-      isLoading={listLoading}
+      isLoading={isLoading}
       pagination={pagination}
       navigationTitle={navigationTitle}
       actions={
@@ -79,7 +59,7 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
           />
         ))}
       </List.Section>
-      {!listLoading && (!pipelines || pipelines.length === 0) ? (
+      {!isLoading && (!pipelines || pipelines.length === 0) ? (
         <List.EmptyView title="No Pipelines" description="This merge request has no pipelines yet." />
       ) : null}
     </List>

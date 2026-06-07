@@ -2,14 +2,6 @@ import { Color, Icon, Image, List } from "@raycast/api";
 import { GitLabIcons } from "../icons";
 import { MRState } from "./mr";
 
-export function getMRStateMetadataIcon(state: string): Image.ImageLike {
-  const icon = getMRStateListIcon(state);
-  if (icon && typeof icon === "object" && "value" in icon) {
-    return icon.value as Image.ImageLike;
-  }
-  return icon as Image.ImageLike;
-}
-
 export function getMRStateListIcon(state: string): List.Item.Props["icon"] {
   if (state === "merged") {
     return {
