@@ -26,8 +26,8 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
     showErrorToast(error, "Could not fetch Pipelines");
   }
 
-  const runRef = pipelines?.[0]?.ref || mr.source_branch;
-  const runProjectId = pipelines?.[0]?.projectId || `${mr.project_id}`;
+  const runRef = pipelines?.[0]?.ref ?? mr.source_branch;
+  const runProjectId = pipelines?.[0]?.projectId ?? `${mr.project_id}`;
 
   return (
     <List
@@ -55,7 +55,6 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
             projectFullPath={projectFullPath}
             onRefreshPipelines={performRefetch}
             navigationTitle={navigationTitle}
-            runRefFallback={mr.source_branch}
           />
         ))}
       </List.Section>

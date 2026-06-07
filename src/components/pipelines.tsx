@@ -48,7 +48,6 @@ export function PipelineListItem(props: {
   projectFullPath: string;
   onRefreshPipelines: () => void;
   navigationTitle?: string;
-  runRefFallback?: string;
 }) {
   const pipeline = props.pipeline;
   const dateAccessory = getPipelineListAccessory(pipeline);
@@ -85,11 +84,7 @@ export function PipelineListItem(props: {
             ) : null}
           </ActionPanel.Section>
           <ActionPanel.Section>
-            <PipelineItemActions
-              pipeline={props.pipeline}
-              runRefFallback={props.runRefFallback}
-              onRefreshPipelines={props.onRefreshPipelines}
-            />
+            <PipelineItemActions pipeline={props.pipeline} onRefreshPipelines={props.onRefreshPipelines} />
           </ActionPanel.Section>
         </ActionPanel>
       }
@@ -97,20 +92,13 @@ export function PipelineListItem(props: {
   );
 }
 
-export function PipelineList(props: {
-  projectFullPath: string;
-  projectId: number | string;
-  defaultBranch?: string;
-  navigationTitle?: string;
-}) {
+export function PipelineList(props: { projectFullPath: string; navigationTitle?: string }) {
   const cacheKey = `project_pipelines_${props.projectFullPath}`;
   const { pipelines, error, isLoading, performRefetch, pagination } = usePaginatedProjectPipelines({
     cacheKey,
     projectFullPath: props.projectFullPath,
   });
-  const defaultBranch = props.defaultBranch ?? "";
-  const runRef = pipelines?.[0]?.ref || defaultBranch;
-  const runProjectId = pipelines?.[0]?.projectId || `${props.projectId}`;
+  const runPipeline = pipelines?.[0];
 
   useInterval(() => {
     performRefetch();
@@ -126,12 +114,14 @@ export function PipelineList(props: {
       actions={
         <ActionPanel>
           <ActionPanel.Section>
-            <RunPipelineAction
-              projectId={runProjectId}
-              ref={runRef}
-              onFinished={performRefetch}
-              shortcut={{ modifiers: ["cmd"], key: "n" }}
-            />
+            {runPipeline ? (
+              <RunPipelineAction
+                projectId={runPipeline.projectId}
+                ref={runPipeline.ref}
+                onFinished={performRefetch}
+                shortcut={{ modifiers: ["cmd"], key: "n" }}
+              />
+            ) : null}
           </ActionPanel.Section>
         </ActionPanel>
       }
@@ -144,7 +134,6 @@ export function PipelineList(props: {
             projectFullPath={props.projectFullPath}
             onRefreshPipelines={performRefetch}
             navigationTitle={props.navigationTitle}
-            runRefFallback={defaultBranch}
           />
         ))}
       </List.Section>

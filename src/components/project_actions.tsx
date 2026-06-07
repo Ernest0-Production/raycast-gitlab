@@ -231,13 +231,7 @@ export function OpenProjectPipelinesPushAction(props: { project: Project }) {
       title="Pipelines"
       shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
       icon={{ source: GitLabIcons.ci, tintColor: Color.PrimaryText }}
-      target={
-        <PipelineList
-          projectFullPath={props.project.fullPath}
-          projectId={props.project.id}
-          defaultBranch={props.project.default_branch}
-        />
-      }
+      target={<PipelineList projectFullPath={props.project.fullPath} />}
     />
   );
 }

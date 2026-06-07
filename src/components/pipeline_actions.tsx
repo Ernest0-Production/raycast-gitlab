@@ -139,17 +139,15 @@ export function RunPipelineAction(props: {
 
 export function PipelineItemActions(props: {
   pipeline: Pipeline;
-  runRefFallback?: string;
   onRefreshPipelines?: () => void;
   onDataChange?: () => void;
 }) {
   const pipeline = props.pipeline;
-  const runRef = pipeline.ref || props.runRefFallback || "";
   return (
     <React.Fragment>
       <RunPipelineAction
         projectId={pipeline.projectId}
-        ref={runRef}
+        ref={pipeline.ref}
         onFinished={props.onRefreshPipelines ?? props.onDataChange}
         shortcut={{ modifiers: ["cmd"], key: "n" }}
       />

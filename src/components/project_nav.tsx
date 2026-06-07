@@ -93,14 +93,7 @@ export function ProjectNavMenusList(props: { project: Project }) {
         title="Pipelines"
         url={webUrl(project, "-/pipelines")}
         icon={{ source: GitLabIcons.ci, tintColor: Color.PrimaryText }}
-        target={
-          <PipelineList
-            projectFullPath={project.fullPath}
-            projectId={project.id}
-            defaultBranch={project.default_branch}
-            navigationTitle={project.name_with_namespace}
-          />
-        }
+        target={<PipelineList projectFullPath={project.fullPath} navigationTitle={project.name_with_namespace} />}
       />
       <ProjectNavMenuItem
         title="Milestones"
