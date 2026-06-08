@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 import { getGitLabGQL } from "../common";
-import { Pipeline } from "../gitlabapi";
+import { Pipeline, User } from "../gitlabapi";
 import { getIdFromGqlId } from "../utils";
 
 export const PIPELINE_LIST_PAGE_SIZE = 20;
@@ -22,6 +22,12 @@ export function normalizePipelineForList(data: Record<string, any>): Pipeline {
   pipeline.finished_at = data.finished_at ?? data.finishedAt ?? "";
   pipeline.duration = data.duration ?? 0;
   pipeline.commit_title = data.commit_title ?? data.commitTitle ?? "";
+  if (data.user?.name || data.user?.username) {
+    const user = new User();
+    user.name = data.user.name ?? "";
+    user.username = data.user.username ?? "";
+    pipeline.user = user;
+  }
   return pipeline;
 }
 
@@ -43,6 +49,10 @@ const PIPELINE_LIST_FIELDS = gql`
     finishedAt
     commit {
       title
+    }
+    user {
+      name
+      username
     }
   }
 `;
@@ -97,6 +107,7 @@ interface GqlPipelineNode {
   updatedAt: string;
   finishedAt?: string;
   commit?: { title?: string | null } | null;
+  user?: { name?: string | null; username?: string | null } | null;
 }
 
 interface GqlPipelineConnection {
@@ -128,6 +139,7 @@ function gqlPipelineToPipeline(node: GqlPipelineNode): Pipeline {
     finished_at: node.finishedAt,
     sha: node.sha,
     commit_title: node.commit?.title ?? "",
+    user: node.user,
   });
 }
 

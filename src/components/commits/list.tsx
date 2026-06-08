@@ -9,9 +9,11 @@ import { Event } from "../event";
 import { fetchPushEventsWithProjects } from "../events_data";
 import { PipelineJobsListByCommit } from "../jobs";
 import { MyProjectsDropdown } from "../project";
-import { CommitListItem } from "./item";
 import { RefreshCommitsAction } from "./actions";
 import { usePaginatedMergeRequestCommits, usePaginatedProjectCommits } from "./data";
+import { CommitListItem } from "./item";
+
+export const commitSearchBarPlaceholder = "Search commits by title, message, or author...";
 
 function EventCommitListItem(props: { event: Event; onRefresh?: () => void }) {
   return (
@@ -84,7 +86,12 @@ export function MRCommitList(props: { projectID: number; mrIID: number; navigati
     mrIID: props.mrIID });
 
   return (
-    <List isLoading={isLoading} pagination={pagination} navigationTitle={props.navigationTitle}>
+    <List
+      isLoading={isLoading}
+      pagination={pagination}
+      navigationTitle={props.navigationTitle}
+      searchBarPlaceholder={commitSearchBarPlaceholder}
+    >
       {commits.map((commit) => (
         <CommitListItem key={commit.id} commit={commit} />
       ))}
@@ -102,7 +109,12 @@ export function ProjectCommitList(props: { projectID: number; refName?: string; 
     refName: props.refName });
 
   return (
-    <List isLoading={isLoading} pagination={pagination} navigationTitle={props.navigationTitle}>
+    <List
+      isLoading={isLoading}
+      pagination={pagination}
+      navigationTitle={props.navigationTitle}
+      searchBarPlaceholder={commitSearchBarPlaceholder}
+    >
       {commits.map((commit) => (
         <CommitListItem key={commit.id} commit={commit} />
       ))}

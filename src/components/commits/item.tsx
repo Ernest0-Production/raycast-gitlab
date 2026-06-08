@@ -10,6 +10,9 @@ export function CommitListItem(props: { commit: Commit }) {
     <List.Item
       key={props.commit.id}
       title={props.commit.title}
+      keywords={[props.commit.message, props.commit.author_name, props.commit.author_email].filter(
+        (keyword): keyword is string => !!keyword,
+      )}
       icon={{
         value: props.commit.author_avatar_url
           ? { source: props.commit.author_avatar_url, mask: Image.Mask.Circle }

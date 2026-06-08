@@ -13,6 +13,8 @@ import { Pipeline } from "../gitlabapi";
 import { usePaginatedProjectPipelines } from "./pipelines_data";
 export { normalizePipelineForList } from "./pipelines_gql";
 
+export const pipelineSearchBarPlaceholder = "Search pipelines by commit, ref, or author...";
+
 export function PipelineListItem(props: {
   pipeline: Pipeline;
   projectFullPath: string;
@@ -29,6 +31,12 @@ export function PipelineListItem(props: {
     <List.Item
       id={`${props.pipeline.id}`}
       title={props.pipeline.id.toString()}
+      keywords={[
+        props.pipeline.commit_title,
+        props.pipeline.ref,
+        props.pipeline.user?.name,
+        props.pipeline.user?.username,
+      ].filter((keyword): keyword is string => !!keyword)}
       icon={{
         value: getCIJobStatusIcon(props.pipeline.status, false),
         tooltip: props.pipeline.status ? getMRPipelineStatusTooltip(props.pipeline.status) : "",
@@ -90,6 +98,7 @@ export function PipelineList(props: { projectFullPath: string; navigationTitle?:
       isLoading={isLoading}
       pagination={pagination}
       navigationTitle={props.navigationTitle || "Pipelines"}
+      searchBarPlaceholder={pipelineSearchBarPlaceholder}
       actions={
         <ActionPanel>
           <ActionPanel.Section>

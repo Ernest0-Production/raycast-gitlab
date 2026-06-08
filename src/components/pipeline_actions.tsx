@@ -115,7 +115,7 @@ export function RunPipelineAction(props: {
     }
     try {
       await showToast({ style: Toast.Style.Animated, title: "Starting pipeline..." });
-      const created = await gitlab.post(`projects/${props.projectId}/pipeline`, { ref });
+      const created = await gitlab.post(`projects/${props.projectId}/pipeline?ref=${encodeURIComponent(ref)}`);
       showToast(Toast.Style.Success, "Started pipeline", created?.id ? `#${created.id}` : "");
       props.onFinished?.();
     } catch (error) {

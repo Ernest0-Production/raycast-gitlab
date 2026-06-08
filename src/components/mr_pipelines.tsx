@@ -1,6 +1,6 @@
 import { ActionPanel, List } from "@raycast/api";
 import { MergeRequest } from "../gitlabapi";
-import { PipelineListItem } from "./pipelines";
+import { PipelineListItem, pipelineSearchBarPlaceholder } from "./pipelines";
 import { RunPipelineAction } from "./pipeline_actions";
 import { usePaginatedMRPipelines } from "./pipelines_data";
 
@@ -16,6 +16,7 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
       isLoading={isLoading}
       pagination={pagination}
       navigationTitle={`Pipelines · ${props.mr.reference_full}`}
+      searchBarPlaceholder={pipelineSearchBarPlaceholder}
       actions={
         <ActionPanel>
           <ActionPanel.Section>
