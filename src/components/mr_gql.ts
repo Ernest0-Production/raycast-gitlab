@@ -83,6 +83,11 @@ const MERGE_REQUEST_LIST_FIELDS = gql`
     userPermissions {
       canMerge
     }
+    approvedBy {
+      nodes {
+        username
+      }
+    }
     description
     project {
       webUrl
@@ -387,6 +392,7 @@ interface GqlMRListNode {
   headPipeline?: GqlPipelineNode | null;
   pipelines?: { nodes: GqlPipelineNode[] };
   userPermissions?: { canMerge: boolean };
+  approvedBy?: { nodes: { username: string }[] };
 }
 
 interface GqlMRConnection {
@@ -479,7 +485,10 @@ function mergeRequestListPipeline(node: GqlMRListNode): GqlPipelineNode | null |
   return node.headPipeline ?? node.pipelines?.nodes?.[0];
 }
 
-export function gqlNodeToMergeRequest(node: GqlMRListNode): MergeRequest {
+export function gqlNodeToMergeRequest(node: GqlMRListNode, currentUsername?: string): MergeRequest {
+  const approvedByCurrentUser = currentUsername
+    ? (node.approvedBy?.nodes?.some((user) => user.username === currentUsername) ?? false)
+    : undefined;
   const listPipeline = mergeRequestListPipeline(node);
   const headStatus = pipelineStatusFromGql(listPipeline);
   return {
@@ -523,7 +532,13 @@ export function gqlNodeToMergeRequest(node: GqlMRListNode): MergeRequest {
     user_notes_count: undefined,
     resolved_discussions_count: node.resolvedDiscussionsCount ?? undefined,
     resolvable_discussions_count: node.resolvableDiscussionsCount ?? undefined,
-    user: node.userPermissions ? { can_merge: node.userPermissions.canMerge === true } : undefined,
+    user:
+      node.userPermissions || approvedByCurrentUser !== undefined
+        ? {
+            can_merge: node.userPermissions?.canMerge === true,
+            approved: approvedByCurrentUser === true,
+          }
+        : undefined,
     head_pipeline: headStatus
       ? {
           id: listPipeline?.id ? getIdFromGqlId(listPipeline.id) : 0,
@@ -807,8 +822,8 @@ export async function fetchMergeRequestsGqlPage(options: {
   const source = resolveMRListSource(params, project, group);
   const scope = (params.scope as MRScope | undefined) ?? MRScope.all;
   const applyScopeUserFilter = (source.kind === "project" || source.kind === "group") && scope !== MRScope.all;
-  const currentUsername = applyScopeUserFilter ? await getCurrentUsername() : undefined;
-  const filters = buildMRListGqlFilters(params, scope, currentUsername);
+  const currentUsername = await getCurrentUsername();
+  const filters = buildMRListGqlFilters(params, scope, applyScopeUserFilter ? currentUsername : undefined);
 
   if (!endCursorsByCacheKey.has(cacheKey)) {
     endCursorsByCacheKey.set(cacheKey, []);
@@ -843,7 +858,7 @@ export async function fetchMergeRequestsGqlPage(options: {
   cursors[page] = connection.pageInfo.endCursor ?? "";
 
   return {
-    mergeRequests: connection.nodes.map(gqlNodeToMergeRequest),
+    mergeRequests: connection.nodes.map((node) => gqlNodeToMergeRequest(node, currentUsername)),
     hasMore: connection.pageInfo.hasNextPage,
   };
 }
@@ -886,7 +901,8 @@ export async function fetchMergeRequestGqlByProjectIid(project: Project, iid: nu
   if (!node) {
     throw new Error("Merge request not found");
   }
-  return gqlNodeToMergeRequest(node);
+  const currentUsername = await getCurrentUsername();
+  return gqlNodeToMergeRequest(node, currentUsername);
 }
 
 export async function fetchMergeRequestGqlByProjectIdIid(projectId: number, iid: number): Promise<MergeRequest> {

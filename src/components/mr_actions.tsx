@@ -93,7 +93,64 @@ export function RebaseMRAction(props: { mr: MergeRequest; shortcut?: Keyboard.Sh
     <Action
       title="Rebase"
       shortcut={props.shortcut}
-      icon={{ source: GitLabIcons.rebase, tintColor: Color.PrimaryText }}
+      icon={{ source: GitLabIcons.rebase, tintColor: Color.Yellow }}
+      onAction={handleAction}
+    />
+  );
+}
+
+export function ApproveMRAction(props: { mr: MergeRequest; finished?: () => void }): React.ReactElement | null {
+  if (props.mr.state !== "opened") {
+    return null;
+  }
+  const approved = props.mr.user?.approved === true;
+  async function handleAction() {
+    if (approved) {
+      if (
+        !(await confirmAlert({
+          title: "Revoke Approval?",
+          message: `Revoke your approval for !${props.mr.iid} "${props.mr.title}"?`,
+          primaryAction: { title: "Revoke Approval", style: Alert.ActionStyle.Destructive },
+        }))
+      ) {
+        return;
+      }
+      try {
+        await showToast({ style: Toast.Style.Animated, title: "Revoking approval..." });
+        await gitlab.post(`projects/${props.mr.project_id}/merge_requests/${props.mr.iid}/unapprove`);
+        showToast(Toast.Style.Success, "Approval revoked");
+        props.finished?.();
+      } catch (error) {
+        showFailureToast(error, { title: "Failed to revoke approval" });
+      }
+      return;
+    }
+    if (
+      !(await confirmAlert({
+        title: "Approve Merge Request?",
+        message: `Approve !${props.mr.iid} "${props.mr.title}"?`,
+        primaryAction: { title: "Approve" },
+      }))
+    ) {
+      return;
+    }
+    try {
+      await showToast({ style: Toast.Style.Animated, title: "Approving Merge Request..." });
+      await gitlab.post(`projects/${props.mr.project_id}/merge_requests/${props.mr.iid}/approve`);
+      showToast(Toast.Style.Success, "Approved");
+      props.finished?.();
+    } catch (error) {
+      showFailureToast(error, { title: "Failed to approve Merge Request" });
+    }
+  }
+  return (
+    <Action
+      title={approved ? "Revoke Approval" : "Approve"}
+      icon={
+        approved
+          ? { source: Icon.Xmark, tintColor: Color.Red }
+          : { source: Icon.Checkmark, tintColor: Color.Green }
+      }
       onAction={handleAction}
     />
   );
@@ -226,6 +283,7 @@ export function MRItemActions(props: {
           mr={props.mr}
           finished={props.onDataChange}
         />
+        <ApproveMRAction mr={props.mr} finished={props.onDataChange} />
         <MergeMRAction
           shortcut={{ modifiers: ["cmd", "shift"], key: "enter" }}
           mr={props.mr}

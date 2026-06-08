@@ -72,7 +72,11 @@ export function MergeRequestSortSubmenu(props: {
   onSelect: (orderBy: MRSearchOrderBy) => void;
 }) {
   return (
-    <ActionPanel.Submenu title="Sort by" icon={Icon.ChevronUpDown}>
+    <ActionPanel.Submenu
+      title="Sort by"
+      shortcut={{ modifiers: ["cmd"], key: "s" }}
+      icon={Icon.ChevronUpDown}
+    >
       <ActionPanel.Section>
         <Action
           title="Default"

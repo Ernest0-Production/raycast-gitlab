@@ -456,6 +456,7 @@ export interface MRDiscussion {
 
 export interface MergeRequestUser {
   can_merge?: boolean;
+  approved?: boolean;
 }
 
 export interface MRHeadPipeline {

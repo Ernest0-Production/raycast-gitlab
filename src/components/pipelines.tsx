@@ -20,6 +20,7 @@ export function PipelineListItem(props: {
   projectFullPath: string;
   onRefreshPipelines: () => void;
   navigationTitle?: string;
+  mrIID?: number;
 }) {
   const finishedAt =
     props.pipeline.finished_at || (props.pipeline as { finishedAt?: string }).finishedAt;
@@ -58,7 +59,7 @@ export function PipelineListItem(props: {
       }
       actions={
         <ActionPanel>
-          <ActionPanel.Section>
+          <ActionPanel.Section title={`#${props.pipeline.iid}`}>
             <Action.Push
               title="Show Jobs"
               target={
@@ -78,7 +79,7 @@ export function PipelineListItem(props: {
               <CancelPipelineAction pipeline={props.pipeline} onRefreshPipelines={props.onRefreshPipelines} />
             )}
           </ActionPanel.Section>
-          <ActionPanel.Section>
+          <ActionPanel.Section title={props.mrIID !== undefined ? `MR !${props.mrIID}` : undefined}>
             <PipelineItemActions pipeline={props.pipeline} onRefreshPipelines={props.onRefreshPipelines} />
           </ActionPanel.Section>
         </ActionPanel>

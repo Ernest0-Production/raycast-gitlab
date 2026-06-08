@@ -38,6 +38,7 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
             projectFullPath={props.mr.project_full_path}
             onRefreshPipelines={performRefetch}
             navigationTitle={`Pipelines · ${props.mr.reference_full}`}
+            mrIID={props.mr.iid}
           />
         ))}
       </List.Section>

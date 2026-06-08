@@ -13,7 +13,7 @@ export function RefreshPipelinesAction(props: {
     <Action
       title="Refresh"
       icon={{ source: Icon.ArrowClockwise, tintColor: Color.PrimaryText }}
-      shortcut={props.shortcut}
+      shortcut={props.shortcut ?? { modifiers: ["cmd"], key: "r" }}
       onAction={() => props.onRefreshPipelines?.()}
     />
   );
@@ -87,7 +87,7 @@ export function RetryPipelineAction(props: { pipeline: Pipeline; onRetryFinished
     <Action
       title="Retry"
       icon={{ source: Icon.Repeat, tintColor: Color.PrimaryText }}
-      shortcut={{ modifiers: ["cmd"], key: "r" }}
+      shortcut={{ modifiers: ["cmd", "shift"], key: "r" }}
       onAction={handle}
     />
   );
