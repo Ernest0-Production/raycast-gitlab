@@ -165,6 +165,23 @@ function DiscussionsMetadataLabel(props: {
   );
 }
 
+function ApprovalsMetadataLabel(props: {
+  approvalsCount?: number;
+  Label: typeof Detail.Metadata.Label | typeof List.Item.Detail.Metadata.Label;
+}) {
+  if (!props.approvalsCount || props.approvalsCount <= 0) {
+    return null;
+  }
+  const Label = props.Label;
+  return (
+    <Label
+      title="Approvals"
+      text={`${props.approvalsCount}`}
+      icon={{ source: Icon.ThumbsUp, tintColor: Color.Green }}
+    />
+  );
+}
+
 export function MRDetailMetadata(props: { mr: MergeRequest; discussionLabel?: string }) {
   return (
     <Detail.Metadata>
@@ -199,6 +216,7 @@ export function MRDetailMetadata(props: { mr: MergeRequest; discussionLabel?: st
         users={assigneesForPeopleSection(props.mr)}
       />
       <DiscussionsMetadataLabel discussionLabel={props.discussionLabel} Label={Detail.Metadata.Label} />
+      <ApprovalsMetadataLabel approvalsCount={props.mr.approvals_count} Label={Detail.Metadata.Label} />
       <UserDetailTagList
         title={props.mr.reviewers.length === 1 ? "Reviewer" : "Reviewers"}
         users={props.mr.reviewers}

@@ -498,6 +498,7 @@ export class MergeRequest {
   public head_pipeline?: MRHeadPipeline;
   public resolved_discussions_count?: number;
   public resolvable_discussions_count?: number;
+  public approvals_count?: number;
 }
 
 export class Pipeline {

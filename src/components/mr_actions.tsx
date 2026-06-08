@@ -278,12 +278,12 @@ export function MRItemActions(props: {
       )}
       <ActionPanel.Section>
         <MRTodoAction mr={props.mr} shortcut={props.todoShortcut} finished={props.onDataChange} />
+        <ApproveMRAction mr={props.mr} finished={props.onDataChange} />
         <RebaseMRAction
           shortcut={{ modifiers: ["cmd", "shift"], key: "r" }}
           mr={props.mr}
           finished={props.onDataChange}
         />
-        <ApproveMRAction mr={props.mr} finished={props.onDataChange} />
         <MergeMRAction
           shortcut={{ modifiers: ["cmd", "shift"], key: "enter" }}
           mr={props.mr}

@@ -532,6 +532,7 @@ export function gqlNodeToMergeRequest(node: GqlMRListNode, currentUsername?: str
     user_notes_count: undefined,
     resolved_discussions_count: node.resolvedDiscussionsCount ?? undefined,
     resolvable_discussions_count: node.resolvableDiscussionsCount ?? undefined,
+    approvals_count: node.approvedBy?.nodes?.length,
     user:
       node.userPermissions || approvedByCurrentUser !== undefined
         ? {
