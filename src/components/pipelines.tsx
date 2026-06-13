@@ -80,7 +80,11 @@ export function PipelineListItem(props: {
             )}
           </ActionPanel.Section>
           <ActionPanel.Section title={props.mrIID !== undefined ? `MR !${props.mrIID}` : undefined}>
-            <PipelineItemActions pipeline={props.pipeline} onRefreshPipelines={props.onRefreshPipelines} />
+            <PipelineItemActions
+              pipeline={props.pipeline}
+              onRefreshPipelines={props.onRefreshPipelines}
+              mrIID={props.mrIID}
+            />
           </ActionPanel.Section>
         </ActionPanel>
       }

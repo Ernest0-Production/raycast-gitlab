@@ -22,7 +22,7 @@ export function MRPipelineList(props: { mr: MergeRequest }) {
           <ActionPanel.Section>
             <RunPipelineAction
               projectId={pipelines[0]?.projectId ?? `${props.mr.project_id}`}
-              ref={pipelines[0]?.ref ?? props.mr.source_branch}
+              mrIID={props.mr.iid}
               onFinished={performRefetch}
               shortcut={{ modifiers: ["cmd"], key: "n" }}
             />

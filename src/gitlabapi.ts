@@ -53,6 +53,7 @@ const activateAPILogging = false;
 interface GitLabApiErrorBody {
   error?: string;
   message?: string | Record<string, string[]>;
+  base?: string[];
 }
 
 interface GitLabUserJson {
@@ -609,6 +610,17 @@ export function isValidStatus(status: Status): boolean {
   return false;
 }
 
+function gitLabApiValidationMessage(message: string | Record<string, string[]> | undefined): string | undefined {
+  if (!message) {
+    return undefined;
+  }
+  if (typeof message === "string") {
+    return message;
+  }
+  const parts = Object.values(message).flatMap((entries) => entries);
+  return parts.length > 0 ? parts.join(" ") : JSON.stringify(message);
+}
+
 function gitLabApiErrorDescription(json: GitLabApiErrorBody, statusCode: number): string {
   if (statusCode === 401) {
     return "Unauthorized";
@@ -617,16 +629,15 @@ function gitLabApiErrorDescription(json: GitLabApiErrorBody, statusCode: number)
     if (json.error === "insufficient_scope") {
       return "Insufficient API token scope";
     }
-    return json.error ?? (typeof json.message === "string" ? json.message : undefined) ?? "Forbidden";
+    return json.error ?? gitLabApiValidationMessage(json.message) ?? "Forbidden";
   }
   if (statusCode === 404) {
     return "Not found";
   }
-  if (typeof json.message === "string") {
-    return json.message;
-  }
-  if (json.message) {
-    return JSON.stringify(json.message);
+  const validationMessage =
+    gitLabApiValidationMessage(json.message) ?? (json.base?.length ? json.base.join(" ") : undefined);
+  if (validationMessage) {
+    return validationMessage;
   }
   if (json.error) {
     return json.error;

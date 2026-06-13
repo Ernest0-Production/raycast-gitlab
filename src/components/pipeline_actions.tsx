@@ -95,19 +95,22 @@ export function RetryPipelineAction(props: { pipeline: Pipeline; onRetryFinished
 
 export function RunPipelineAction(props: {
   projectId: string | number;
-  ref: string;
+  ref?: string;
+  mrIID?: number;
   onFinished?: () => void;
   shortcut?: Keyboard.Shortcut;
 }): React.ReactElement | null {
-  const ref = props.ref.trim();
-  if (!ref) {
+  const ref = props.ref?.trim();
+  if (!props.mrIID && !ref) {
     return null;
   }
   async function handle() {
     if (
       !(await confirmAlert({
         title: "Run Pipeline?",
-        message: `Create a new pipeline for ref "${ref}"?`,
+        message: props.mrIID
+          ? `Create a new pipeline for merge request !${props.mrIID}?`
+          : `Create a new pipeline for ref "${ref}"?`,
         primaryAction: { title: "Run Pipeline" },
       }))
     ) {
@@ -115,7 +118,9 @@ export function RunPipelineAction(props: {
     }
     try {
       await showToast({ style: Toast.Style.Animated, title: "Starting pipeline..." });
-      const created = await gitlab.post(`projects/${props.projectId}/pipeline?ref=${encodeURIComponent(ref)}`);
+      const created = props.mrIID
+        ? await gitlab.post(`projects/${props.projectId}/merge_requests/${props.mrIID}/pipelines`)
+        : await gitlab.post(`projects/${props.projectId}/pipeline?ref=${encodeURIComponent(ref!)}`);
       showToast(Toast.Style.Success, "Started pipeline", created?.id ? `#${created.id}` : "");
       props.onFinished?.();
     } catch (error) {
@@ -136,12 +141,14 @@ export function PipelineItemActions(props: {
   pipeline: Pipeline;
   onRefreshPipelines?: () => void;
   onDataChange?: () => void;
+  mrIID?: number;
 }) {
   return (
     <React.Fragment>
       <RunPipelineAction
         projectId={props.pipeline.projectId}
-        ref={props.pipeline.ref}
+        ref={props.mrIID ? undefined : props.pipeline.ref}
+        mrIID={props.mrIID}
         onFinished={props.onRefreshPipelines ?? props.onDataChange}
         shortcut={{ modifiers: ["cmd"], key: "n" }}
       />
