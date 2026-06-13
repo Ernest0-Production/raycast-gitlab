@@ -721,8 +721,9 @@ function resolveMRListSource(params: Record<string, any>, project?: Project, gro
     case MRScope.reviews_for_me:
       return { kind: "review" };
     case MRScope.created_by_me:
-    default:
       return { kind: "authored" };
+    case MRScope.all:
+      throw new Error("Scope All requires a project or group");
   }
 }
 
@@ -820,8 +821,12 @@ export async function fetchMergeRequestsGqlPage(options: {
   group?: Group;
 }): Promise<{ mergeRequests: MergeRequest[]; hasMore: boolean }> {
   const { cacheKey, page, params, project, group } = options;
-  const source = resolveMRListSource(params, project, group);
   const scope = (params.scope as MRScope | undefined) ?? MRScope.all;
+  if (!project && !group && scope === MRScope.all) {
+    return { mergeRequests: [], hasMore: false };
+  }
+
+  const source = resolveMRListSource(params, project, group);
   const applyScopeUserFilter = (source.kind === "project" || source.kind === "group") && scope !== MRScope.all;
   const currentUsername = await getCurrentUsername();
   const filters = buildMRListGqlFilters(params, scope, applyScopeUserFilter ? currentUsername : undefined);

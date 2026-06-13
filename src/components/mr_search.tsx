@@ -151,6 +151,7 @@ export function SearchMyMergeRequests() {
     () => myprojects.find((candidate) => `${candidate.id}` === projectId),
     [myprojects, projectId],
   );
+  const hasProjects = myprojects.length > 0;
 
   useEffect(() => {
     if (!myprojects.length || projectId !== undefined) {
@@ -179,8 +180,6 @@ export function SearchMyMergeRequests() {
     execute: !!project,
     keepPreviousData: true,
   });
-
-  const hasProjects = !!myprojects && myprojects.length > 0;
 
   return (
     <List
