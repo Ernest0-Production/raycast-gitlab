@@ -106,6 +106,7 @@ export default function MenuCommand() {
           >
             {mrsCreated?.map((mergeRequest) => (
               <MenuBarItem
+                key={mergeRequest.id}
                 icon={{
                   source: GitLabIcons.merge_request,
                   tintColor: { light: "#000", dark: "#FFF", adjustContrast: false } }}
@@ -144,6 +145,7 @@ export default function MenuCommand() {
           >
             {mrsAssigned?.map((mergeRequest) => (
               <MenuBarItem
+                key={mergeRequest.id}
                 icon={{
                   source: GitLabIcons.merge_request,
                   tintColor: { light: "#000", dark: "#FFF", adjustContrast: false } }}
@@ -182,6 +184,7 @@ export default function MenuCommand() {
           >
             {mrsReview?.map((mergeRequest) => (
               <MenuBarItem
+                key={mergeRequest.id}
                 icon={{
                   source: GitLabIcons.merge_request,
                   tintColor: { light: "#000", dark: "#FFF", adjustContrast: false } }}
