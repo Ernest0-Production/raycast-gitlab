@@ -22,6 +22,10 @@ const DISCUSSION_NOTE_FIELDS = gql`
       oldPath
       newLine
       oldLine
+      diffRefs {
+        headSha
+        startSha
+      }
     }
     author {
       username
@@ -66,6 +70,35 @@ const CREATE_NOTE = gql`
   }
 `;
 
+const DISCUSSION_TOGGLE_RESOLVE = gql`
+  mutation DiscussionToggleResolve($input: DiscussionToggleResolveInput!) {
+    discussionToggleResolve(input: $input) {
+      errors
+    }
+  }
+`;
+
+const MR_DISCUSSION_DIFF = gql`
+  query MergeRequestDiscussionDiff($fullPath: ID!, $headSha: String!, $contextRef: String!, $filePath: String!) {
+    project(fullPath: $fullPath) {
+      repository {
+        commit(ref: $headSha) {
+          diffs {
+            diff
+            newPath
+            oldPath
+          }
+        }
+        blobs(paths: [$filePath], ref: $contextRef, first: 1) {
+          nodes {
+            rawTextBlob
+          }
+        }
+      }
+    }
+  }
+`;
+
 interface GqlDiscussionNoteNode {
   id: string;
   body: string;
@@ -80,6 +113,10 @@ interface GqlDiscussionNoteNode {
     oldPath?: string | null;
     newLine?: number | null;
     oldLine?: number | null;
+    diffRefs?: {
+      headSha?: string | null;
+      startSha?: string | null;
+    } | null;
   } | null;
   author?: {
     username?: string | null;
@@ -103,6 +140,16 @@ interface GqlDiscussionConnection {
   };
 }
 
+interface GqlDiffNode {
+  diff?: string | null;
+  newPath?: string | null;
+  oldPath?: string | null;
+}
+
+interface GqlBlobNode {
+  rawTextBlob?: string | null;
+}
+
 const endCursorsByCacheKey = new Map<string, string[]>();
 
 export function resetMRDiscussionsGqlCursors(cacheKey: string): void {
@@ -123,12 +170,21 @@ function gqlPositionToPosition(position?: GqlDiscussionNoteNode["position"]): MR
   if (!position) {
     return undefined;
   }
-  const filePath = position.newPath ?? position.oldPath ?? position.filePath;
+  const filePath =
+    position.oldLine && !position.newLine
+      ? (position.oldPath ?? position.filePath)
+      : (position.newPath ?? position.filePath);
   if (!filePath) {
     return undefined;
   }
   const line = position.newLine ?? position.oldLine ?? undefined;
-  return { file_path: filePath, line };
+  return {
+    file_path: filePath,
+    line,
+    line_type: position.newLine ? "new" : position.oldLine ? "old" : undefined,
+    head_sha: position.diffRefs?.headSha ?? undefined,
+    start_sha: position.diffRefs?.startSha ?? undefined,
+  };
 }
 
 function gqlDiscussionNoteToNote(node: GqlDiscussionNoteNode): MRDiscussionNote {
@@ -239,6 +295,121 @@ export async function fetchMRDiscussionsGqlPage(options: {
   return fetchDiscussionGqlPage(options);
 }
 
+function parseHunkHeader(line: string): { oldStart: number; newStart: number } | undefined {
+  const match = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
+  if (!match) {
+    return undefined;
+  }
+  return {
+    oldStart: parseInt(match[1], 10),
+    newStart: parseInt(match[2], 10),
+  };
+}
+
+function hunkContainsLine(hunkLines: string[], position: NonNullable<MRDiscussionNote["position"]>): boolean {
+  if (!position.line) {
+    return false;
+  }
+  const header = parseHunkHeader(hunkLines[0]);
+  if (!header) {
+    return false;
+  }
+  let oldLine = header.oldStart;
+  let newLine = header.newStart;
+  for (const line of hunkLines.slice(1)) {
+    if (line.startsWith("+")) {
+      if (position.line_type !== "old" && newLine === position.line) {
+        return true;
+      }
+      newLine++;
+      continue;
+    }
+    if (line.startsWith("-")) {
+      if (position.line_type === "old" && oldLine === position.line) {
+        return true;
+      }
+      oldLine++;
+      continue;
+    }
+    if (position.line_type !== "old" && newLine === position.line) {
+      return true;
+    }
+    if (position.line_type === "old" && oldLine === position.line) {
+      return true;
+    }
+    oldLine++;
+    newLine++;
+  }
+  return false;
+}
+
+function extractFocusedHunk(diff: string, position: NonNullable<MRDiscussionNote["position"]>): string | undefined {
+  const lines = diff.split("\n");
+  const hunks: string[][] = [];
+  let currentHunk: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith("@@ ")) {
+      if (currentHunk.length > 0) {
+        hunks.push(currentHunk);
+      }
+      currentHunk = [line];
+      continue;
+    }
+    if (currentHunk.length > 0) {
+      currentHunk.push(line);
+    }
+  }
+  if (currentHunk.length > 0) {
+    hunks.push(currentHunk);
+  }
+  return hunks.find((hunkLines) => hunkContainsLine(hunkLines, position))?.join("\n");
+}
+
+function extractBlobContext(text: string, position: NonNullable<MRDiscussionNote["position"]>): string | undefined {
+  if (!position.line) {
+    return undefined;
+  }
+  const lines = text.split("\n");
+  const start = Math.max(position.line - 4, 1);
+  const end = Math.min(position.line + 4, lines.length);
+  const prefix = position.line_type === "old" ? "-" : "+";
+  return lines
+    .slice(start - 1, end)
+    .map((line, offset) => `${start + offset === position.line ? prefix : " "} ${line}`)
+    .join("\n");
+}
+
+export async function fetchMRDiscussionDiffGql(options: {
+  projectFullPath: string;
+  position: NonNullable<MRDiscussionNote["position"]>;
+}): Promise<string | undefined> {
+  if (!options.position.head_sha) {
+    return undefined;
+  }
+  const contextRef =
+    options.position.line_type === "old"
+      ? (options.position.start_sha ?? options.position.head_sha)
+      : options.position.head_sha;
+  const response = await getGitLabGQL().client.query({
+    query: MR_DISCUSSION_DIFF,
+    variables: {
+      fullPath: options.projectFullPath,
+      headSha: options.position.head_sha,
+      contextRef,
+      filePath: options.position.file_path,
+    },
+  });
+  const diffs = response.data?.project?.repository?.commit?.diffs as GqlDiffNode[] | undefined;
+  const diff = diffs?.find(
+    (candidate) => candidate.newPath === options.position.file_path || candidate.oldPath === options.position.file_path,
+  )?.diff;
+  if (diff) {
+    return extractFocusedHunk(diff, options.position) ?? diff;
+  }
+  const blob = response.data?.project?.repository?.blobs?.nodes?.[0] as GqlBlobNode | undefined;
+  return blob?.rawTextBlob ? extractBlobContext(blob.rawTextBlob, options.position) : undefined;
+}
+
 export async function createMRDiscussionNoteGql(options: {
   noteableId: string;
   discussionId: string;
@@ -255,6 +426,22 @@ export async function createMRDiscussionNoteGql(options: {
     },
   });
   const errors = response.data?.createNote?.errors as string[] | undefined;
+  if (errors && errors.length > 0) {
+    throw new Error(errors.join(", "));
+  }
+}
+
+export async function toggleMRDiscussionResolveGql(options: { discussionId: string; resolve: boolean }): Promise<void> {
+  const response = await getGitLabGQL().client.mutate({
+    mutation: DISCUSSION_TOGGLE_RESOLVE,
+    variables: {
+      input: {
+        id: options.discussionId,
+        resolve: options.resolve,
+      },
+    },
+  });
+  const errors = response.data?.discussionToggleResolve?.errors as string[] | undefined;
   if (errors && errors.length > 0) {
     throw new Error(errors.join(", "));
   }

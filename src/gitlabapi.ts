@@ -447,6 +447,9 @@ export class Issue {
 export interface MRDiscussionNotePosition {
   file_path: string;
   line?: number;
+  line_type?: "new" | "old";
+  head_sha?: string;
+  start_sha?: string;
 }
 
 export interface MRDiscussionNote {

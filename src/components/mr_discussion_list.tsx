@@ -1,10 +1,28 @@
-import { Action, ActionPanel, Color, Form, Icon, Image, List, showToast, Toast, useNavigation } from "@raycast/api";
-import { showFailureToast, usePromise } from "@raycast/utils";
+import {
+  Action,
+  ActionPanel,
+  Color,
+  confirmAlert,
+  Form,
+  Icon,
+  Image,
+  List,
+  showToast,
+  Toast,
+  useNavigation,
+} from "@raycast/api";
+import { showFailureToast, useCachedPromise, usePromise } from "@raycast/utils";
+import { useEffect, useState } from "react";
 import { MRDiscussion, MRDiscussionNote, MergeRequest } from "../gitlabapi";
-import { formatDateTime, optimizeMarkdownText, shortify } from "../utils";
+import { formatDate, optimizeMarkdownText, shortify } from "../utils";
 import { GitLabOpenInBrowserAction } from "./actions";
 import { isDiscussionResolved } from "./mr_discussions";
-import { createMRDiscussionNoteGql, fetchMRDiscussionsGqlPage } from "./mr_discussions_gql";
+import {
+  createMRDiscussionNoteGql,
+  fetchMRDiscussionDiffGql,
+  fetchMRDiscussionsGqlPage,
+  toggleMRDiscussionResolveGql,
+} from "./mr_discussions_gql";
 
 function discussionNotes(discussion: MRDiscussion): MRDiscussionNote[] {
   return (discussion.notes ?? []).filter((note) => !note.system);
@@ -22,21 +40,6 @@ function discussionTitle(discussion: MRDiscussion): string {
   return shortify(firstDiscussionNote(discussion)?.body.replace(/\s+/g, " ").trim() || "Discussion", 100);
 }
 
-function discussionSubtitle(discussion: MRDiscussion): string | undefined {
-  const position = firstDiscussionNote(discussion)?.position;
-  if (!position?.file_path) {
-    return undefined;
-  }
-  return position.line ? `${position.file_path}:${position.line}` : position.file_path;
-}
-
-function quoteMarkdown(text: string): string {
-  return text
-    .split("\n")
-    .map((line) => `> ${line}`)
-    .join("\n");
-}
-
 function discussionPositionMarkdown(note: MRDiscussionNote, mr: MergeRequest): string | undefined {
   if (!note.position?.file_path) {
     return undefined;
@@ -46,21 +49,42 @@ function discussionPositionMarkdown(note: MRDiscussionNote, mr: MergeRequest): s
   return `[${label}](${url})`;
 }
 
-function discussionMarkdown(discussion: MRDiscussion, mr: MergeRequest): string {
+function diffMarkdown(diff: string | undefined): string | undefined {
+  if (!diff) {
+    return undefined;
+  }
+  return ["```diff", diff, "```"].join("\n");
+}
+
+function discussionMarkdown(
+  discussion: MRDiscussion,
+  mr: MergeRequest,
+  diff: string | undefined,
+  isLoadingDiff?: boolean,
+): string {
   const notes = discussionNotes(discussion);
   const blocks: string[] = [];
+  const hasPosition = notes[0]?.position !== undefined;
   const positionLine = notes[0] ? discussionPositionMarkdown(notes[0], mr) : undefined;
   if (positionLine) {
     blocks.push(positionLine);
   }
-  for (const note of notes) {
-    blocks.push(
-      [
-        `**${note.author?.username ?? "Unknown"}** (*${formatDateTime(note.created_at)}*):`,
-        quoteMarkdown(optimizeMarkdownText(note.body, mr.project_web_url)),
-      ].join("\n"),
-    );
+  const diffBlock = diffMarkdown(diff);
+  if (diffBlock) {
+    blocks.push(diffBlock);
+  } else if (isLoadingDiff) {
+    blocks.push("_Loading diff..._");
+  } else if (hasPosition) {
+    blocks.push("_Diff is unavailable for this position._");
   }
+  blocks.push(
+    notes
+      .map(
+        (note) =>
+          `**${note.author?.name ?? "Unknown"}** (*${formatDate(note.created_at)}*):  \n${optimizeMarkdownText(note.body, mr.project_web_url)}`,
+      )
+      .join("\n\n---\n\n"),
+  );
   return blocks.join("\n\n");
 }
 
@@ -104,17 +128,64 @@ function MRDiscussionReplyForm(props: { mr: MergeRequest; discussion: MRDiscussi
   );
 }
 
-function MRDiscussionListItem(props: { mr: MergeRequest; discussion: MRDiscussion; onReply: () => void }) {
+function MRDiscussionListItem(props: {
+  mr: MergeRequest;
+  discussion: MRDiscussion;
+  isFocused: boolean;
+  onReply: () => void;
+}) {
   const firstNote = firstDiscussionNote(props.discussion);
+  const position = firstNote?.position;
+  const { data: diff, isLoading: isLoadingDiff } = useCachedPromise(
+    async (projectFullPath: string, position: MRDiscussionNote["position"]) => {
+      if (!position) {
+        return undefined;
+      }
+      return fetchMRDiscussionDiffGql({ projectFullPath, position });
+    },
+    [props.mr.project_full_path, position],
+    {
+      execute: props.isFocused && position?.head_sha !== undefined,
+    },
+  );
+  const isResolved = isDiscussionResolved(props.discussion);
+
+  async function toggleResolved() {
+    if (
+      !(await confirmAlert({
+        title: isResolved ? "Unresolve Discussion?" : "Resolve Discussion?",
+        message: `${isResolved ? "Unresolve" : "Resolve"} this discussion in !${props.mr.iid}?`,
+        primaryAction: {
+          title: isResolved ? "Unresolve" : "Resolve",
+        },
+      }))
+    ) {
+      return;
+    }
+    try {
+      await showToast({
+        style: Toast.Style.Animated,
+        title: isResolved ? "Unresolving discussion..." : "Resolving discussion...",
+      });
+      await toggleMRDiscussionResolveGql({ discussionId: props.discussion.id, resolve: !isResolved });
+      showToast(Toast.Style.Success, isResolved ? "Discussion unresolved" : "Discussion resolved");
+      props.onReply();
+    } catch (error) {
+      showFailureToast(error, {
+        title: isResolved ? "Failed to unresolve discussion" : "Failed to resolve discussion",
+      });
+    }
+  }
 
   return (
     <List.Item
       id={props.discussion.id}
       title={discussionTitle(props.discussion)}
-      subtitle={discussionSubtitle(props.discussion)}
-      icon={{ source: firstNote?.author?.avatar_url || Icon.SpeechBubble, mask: Image.Mask.Circle }}
-      accessories={firstNote?.author ? [{ tooltip: firstNote.author.name }] : []}
-      detail={<List.Item.Detail markdown={discussionMarkdown(props.discussion, props.mr)} />}
+      icon={{
+        value: { source: firstNote?.author?.avatar_url || Icon.SpeechBubble, mask: Image.Mask.Circle },
+        tooltip: firstNote?.author?.name,
+      }}
+      detail={<List.Item.Detail markdown={discussionMarkdown(props.discussion, props.mr, diff, isLoadingDiff)} />}
       actions={
         <ActionPanel>
           <ActionPanel.Section>
@@ -124,6 +195,16 @@ function MRDiscussionListItem(props: { mr: MergeRequest; discussion: MRDiscussio
               target={<MRDiscussionReplyForm mr={props.mr} discussion={props.discussion} onReply={props.onReply} />}
             />
             <GitLabOpenInBrowserAction url={discussionUrl(props.discussion, props.mr)} />
+            {props.discussion.resolvable && (
+              <Action
+                title={isResolved ? "Unresolve Discussion" : "Resolve Discussion"}
+                icon={{
+                  source: isResolved ? Icon.XmarkCircle : Icon.Checkmark,
+                  tintColor: isResolved ? Color.PrimaryText : Color.Green,
+                }}
+                onAction={toggleResolved}
+              />
+            )}
           </ActionPanel.Section>
         </ActionPanel>
       }
@@ -132,6 +213,7 @@ function MRDiscussionListItem(props: { mr: MergeRequest; discussion: MRDiscussio
 }
 
 export function MRDiscussionList(props: { mr: MergeRequest }) {
+  const [selectedDiscussionId, setSelectedDiscussionId] = useState<string>();
   const { data, isLoading, revalidate, pagination } = usePromise(
     (projectFullPath: string, mrIID: number) => async (options: { page: number }) => {
       const { discussions, hasMore } = await fetchMRDiscussionsGqlPage({
@@ -147,22 +229,41 @@ export function MRDiscussionList(props: { mr: MergeRequest }) {
   const discussions = (data ?? []).filter((discussion) => discussionNotes(discussion).length > 0);
   const unresolvedDiscussions = discussions.filter((discussion) => !isDiscussionResolved(discussion));
   const resolvedDiscussions = discussions.filter((discussion) => isDiscussionResolved(discussion));
+  useEffect(() => {
+    if (!selectedDiscussionId && discussions[0]) {
+      setSelectedDiscussionId(discussions[0].id);
+    }
+  }, [discussions, selectedDiscussionId]);
 
   return (
     <List
       isLoading={isLoading}
       isShowingDetail
+      selectedItemId={selectedDiscussionId}
+      onSelectionChange={(id) => setSelectedDiscussionId(id ?? undefined)}
       pagination={pagination}
       navigationTitle={`Discussions ${props.mr.reference_full}`}
     >
       <List.Section title="Unresolved Discussions" subtitle={unresolvedDiscussions.length.toString()}>
         {unresolvedDiscussions.map((discussion) => (
-          <MRDiscussionListItem key={discussion.id} mr={props.mr} discussion={discussion} onReply={revalidate} />
+          <MRDiscussionListItem
+            key={discussion.id}
+            mr={props.mr}
+            discussion={discussion}
+            isFocused={discussion.id === selectedDiscussionId}
+            onReply={revalidate}
+          />
         ))}
       </List.Section>
       <List.Section title="Resolved Discussions" subtitle={resolvedDiscussions.length.toString()}>
         {resolvedDiscussions.map((discussion) => (
-          <MRDiscussionListItem key={discussion.id} mr={props.mr} discussion={discussion} onReply={revalidate} />
+          <MRDiscussionListItem
+            key={discussion.id}
+            mr={props.mr}
+            discussion={discussion}
+            isFocused={discussion.id === selectedDiscussionId}
+            onReply={revalidate}
+          />
         ))}
       </List.Section>
       <List.EmptyView title="No Discussions" />
