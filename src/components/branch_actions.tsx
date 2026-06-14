@@ -87,7 +87,7 @@ export function CreateMRAction(props: { project: Project; branch: Branch }) {
       <Action.Push
         icon={Icon.Pencil}
         title="Create Merge Request"
-        shortcut={{ modifiers: ["cmd"], key: "n" }}
+        shortcut={{ modifiers: ["cmd"], key: "m" }}
         target={<MRCreateForm project={props.project} branch={props.branch.name} />}
       />
     );
@@ -111,7 +111,7 @@ export function CreateBranchAction(props: { project: Project; branch: Branch; on
     <Action.Push
       title="Create Branch"
       icon={{ source: Icon.Plus, tintColor: Color.Green }}
-      shortcut={{ modifiers: ["cmd", "shift"], key: "n" }}
+      shortcut={{ modifiers: ["cmd"], key: "n" }}
       target={
         <BranchNameForm
           navigationTitle="Create Branch"
@@ -138,7 +138,7 @@ export function RenameBranchAction(props: { project: Project; branch: Branch; on
   return (
     <Action.Push
       title="Rename Branch"
-      icon={{ source: Icon.Pencil, tintColor: Color.PrimaryText }}
+      icon={{ source: Icon.Pencil, tintColor: Color.Yellow }}
       shortcut={{ modifiers: ["cmd"], key: "e" }}
       target={
         <BranchNameForm
@@ -186,7 +186,7 @@ export function RemoveBranchAction(props: { project: Project; branch: Branch; on
       title="Delete Branch"
       style={Action.Style.Destructive}
       icon={{ source: Icon.Trash, tintColor: Color.Red }}
-      shortcut={{ modifiers: ["cmd", "shift"], key: "backspace" }}
+      shortcut={{ modifiers: ["ctrl"], key: "x" }}
       onAction={handle}
     />
   );

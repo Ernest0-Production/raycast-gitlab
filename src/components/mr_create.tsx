@@ -1,7 +1,7 @@
 import { Form, Icon, popToRoot, Image, ActionPanel, Action, showToast, Toast } from "@raycast/api";
 import { Project, Branch, Issue, TemplateDetail } from "../gitlabapi";
 import { gitlab } from "../common";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { showFailureToast, useCachedPromise, useCachedState, usePromise } from "@raycast/utils";
 import { projectIcon, stringToSlug, toFormValues } from "../utils";
 import { useProjectMR, useMilestones, ProjectInfoMR } from "../hooks";
@@ -41,6 +41,7 @@ async function submit(values: MRFormValues) {
 }
 
 export function IssueMRCreateForm({ issue, projectID, title }: { issue: Issue; projectID: number; title: string }) {
+  const [targetBranch, setTargetBranch] = useState("");
   const { data } = usePromise(
     async (projectId: number) => {
       const branches = ((await gitlab.fetch(`projects/${projectId}/repository/branches`, {}, true)) as Branch[]) || [];
@@ -87,12 +88,21 @@ export function IssueMRCreateForm({ issue, projectID, title }: { issue: Issue; p
         placeholder="Enter source branch"
         defaultValue={`${issue.iid}-${stringToSlug(issue.title)}`}
       />
-      <TargetBranchDropdown project={data?.project} info={{ branches: data?.branches || [] }} />
+      <TargetBranchDropdown
+        project={data?.project}
+        info={{ branches: data?.branches || [] }}
+        value={targetBranch}
+        onChange={setTargetBranch}
+      />
     </Form>
   );
 }
 
-export function MRCreateForm(props: { project?: Project | undefined; branch?: string | undefined }) {
+export function MRCreateForm(props: {
+  project?: Project | undefined;
+  branch?: string | undefined;
+  draftValues?: Form.Values;
+}) {
   const [selectedProject, setSelectedProject] = useCachedState("mr-create-project-id", "");
   const { data: projects, isLoading: isLoadingProjects } = useCachedPromise(
     async (): Promise<Project[]> => (await gitlab.getUserProjects({}, true)) || [],
@@ -110,10 +120,20 @@ export function MRCreateForm(props: { project?: Project | undefined; branch?: st
 
   const isLoading = isLoadingProjects || isLoadingProjectInfo || isLoadingMilestoneInfo;
 
-  const [removeBranch, setRemoveBranch] = useState<boolean | undefined>(undefined);
-  const [selectedTemplateName, setSelectedTemplateName] = useState<string>(NO_TEMPLATE);
-  const [description, setDescription] = useState("");
-  const [sourceBranch, setSourceBranch] = useState(props.branch ?? "");
+  const [removeBranch, setRemoveBranch] = useState<boolean | undefined>(() =>
+    props.draftValues?.remove_source_branch !== undefined ? Boolean(props.draftValues.remove_source_branch) : undefined,
+  );
+  const [selectedTemplateName, setSelectedTemplateName] = useState<string>(
+    () => (props.draftValues?.template_id as string | undefined) ?? NO_TEMPLATE,
+  );
+  const [description, setDescription] = useState(() => (props.draftValues?.description as string | undefined) ?? "");
+  const [sourceBranch, setSourceBranch] = useState(
+    () => (props.draftValues?.source_branch as string | undefined) ?? props.branch ?? "",
+  );
+  const [targetBranch, setTargetBranch] = useState(
+    () => (props.draftValues?.target_branch as string | undefined) ?? props.project?.default_branch ?? "",
+  );
+  const previousTemplateNameRef = useRef(selectedTemplateName);
 
   const { data: selectedTemplateDetail } = useCachedPromise(
     async (templateName: string): Promise<TemplateDetail | undefined> => {
@@ -124,23 +144,38 @@ export function MRCreateForm(props: { project?: Project | undefined; branch?: st
   );
 
   useEffect(() => {
+    if (props.draftValues?.project_id) {
+      setSelectedProject(String(props.draftValues.project_id));
+      return;
+    }
     if (props.project) {
       setSelectedProject(props.project.id.toString());
     }
-  }, [props.project?.id, setSelectedProject]);
+  }, [props.draftValues?.project_id, props.project?.id, setSelectedProject]);
 
   useEffect(() => {
-    if (props.branch) {
+    if (props.branch && !props.draftValues?.source_branch) {
       setSourceBranch(props.branch);
     }
-  }, [props.branch]);
+  }, [props.branch, props.draftValues?.source_branch]);
 
   useEffect(() => {
-    setDescription(selectedTemplateDetail?.content ?? "");
-  }, [selectedTemplateDetail]);
+    if (previousTemplateNameRef.current === selectedTemplateName) {
+      return;
+    }
+    previousTemplateNameRef.current = selectedTemplateName;
+    if (selectedTemplateName === NO_TEMPLATE) {
+      setDescription("");
+      return;
+    }
+    if (selectedTemplateDetail?.content) {
+      setDescription(selectedTemplateDetail.content);
+    }
+  }, [selectedTemplateName, selectedTemplateDetail]);
 
   return (
     <Form
+      enableDrafts
       isLoading={isLoading}
       actions={
         <ActionPanel>
@@ -156,21 +191,21 @@ export function MRCreateForm(props: { project?: Project | undefined; branch?: st
           if (!props.branch || props.project?.id.toString() !== newValue) {
             setSourceBranch("");
           }
+          const nextProject = projects.find((candidate) => candidate.id.toString() === newValue);
+          if (nextProject?.default_branch) {
+            setTargetBranch(nextProject.default_branch);
+          }
         }}
         value={selectedProject}
       />
-      <SourceBranchDropdown
-        project={project}
-        info={projectinfo}
-        value={sourceBranch}
-        onChange={setSourceBranch}
-      />
-      <TargetBranchDropdown project={project} info={projectinfo} />
+      <SourceBranchDropdown project={project} info={projectinfo} value={sourceBranch} onChange={setSourceBranch} />
+      <TargetBranchDropdown project={project} info={projectinfo} value={targetBranch} onChange={setTargetBranch} />
       <Form.Separator />
       <Form.TextField
         id="title"
         title="Title"
         placeholder="Enter title"
+        defaultValue={props.draftValues?.title as string | undefined}
         autoFocus={selectedProject !== ""}
       />
       <Form.Dropdown id="template_id" title="Template" value={selectedTemplateName} onChange={setSelectedTemplateName}>
@@ -187,7 +222,12 @@ export function MRCreateForm(props: { project?: Project | undefined; branch?: st
         value={description}
         onChange={setDescription}
       />
-      <Form.TagPicker id="assignee_ids" title="Assignees" placeholder="Type or choose an assignee">
+      <Form.TagPicker
+        id="assignee_ids"
+        title="Assignees"
+        placeholder="Type or choose an assignee"
+        defaultValue={props.draftValues?.assignee_ids as string[] | undefined}
+      >
         {members.map((member) => (
           <Form.TagPicker.Item
             key={member.id.toString()}
@@ -197,7 +237,12 @@ export function MRCreateForm(props: { project?: Project | undefined; branch?: st
           />
         ))}
       </Form.TagPicker>
-      <Form.TagPicker id="reviewer_ids" title="Reviewers" placeholder="Type or choose a reviewer">
+      <Form.TagPicker
+        id="reviewer_ids"
+        title="Reviewers"
+        placeholder="Type or choose a reviewer"
+        defaultValue={props.draftValues?.reviewer_ids as string[] | undefined}
+      >
         {members.map((member) => (
           <Form.TagPicker.Item
             key={member.id.toString()}
@@ -207,7 +252,12 @@ export function MRCreateForm(props: { project?: Project | undefined; branch?: st
           />
         ))}
       </Form.TagPicker>
-      <Form.TagPicker id="labels" title="Labels" placeholder="Type or choose an label">
+      <Form.TagPicker
+        id="labels"
+        title="Labels"
+        placeholder="Type or choose an label"
+        defaultValue={props.draftValues?.labels as string[] | undefined}
+      >
         {(projectinfo?.labels || []).map((label) => (
           <Form.TagPicker.Item
             key={label.name}
@@ -217,7 +267,11 @@ export function MRCreateForm(props: { project?: Project | undefined; branch?: st
           />
         ))}
       </Form.TagPicker>
-      <Form.Dropdown id="milestone_id" title="Milestone">
+      <Form.Dropdown
+        id="milestone_id"
+        title="Milestone"
+        defaultValue={props.draftValues?.milestone_id as string | undefined}
+      >
         <Form.Dropdown.Item key={"no_milestone"} value={""} title={"-"} />
         {projectinfo?.milestones?.map((milestone) => (
           <Form.Dropdown.Item key={milestone.id} value={milestone.id.toString()} title={milestone.title} />
@@ -246,7 +300,6 @@ function ProjectDropdown(props: {
       id="project_id"
       title="Project"
       value={props.value}
-      storeValue={true}
       onChange={(newValue: string) => {
         props.setSelectedProject(newValue);
       }}
@@ -319,26 +372,46 @@ function SourceBranchDropdown(props: {
 function TargetBranchDropdown(props: {
   project?: Project | undefined;
   info?: Pick<ProjectInfoMR, "branches"> | undefined;
+  value: string;
+  onChange: (value: string) => void;
 }) {
   if (props.project && props.info) {
+    const branches = branchesByCommittedDate(props.info.branches);
+    const branchNames = new Set(branches.map((branch) => branch.name));
+    if (props.value) {
+      branchNames.add(props.value);
+    }
+    const targetBranches = [...branchNames].sort((left, right) => {
+      if (left === props.project?.default_branch) {
+        return -1;
+      }
+      if (right === props.project?.default_branch) {
+        return 1;
+      }
+      return left.localeCompare(right);
+    });
     return (
       <Form.Dropdown
         id="target_branch"
         title="Target branch"
-        defaultValue={
-          props.project.default_branch && props.project.default_branch.length > 0
-            ? props.project.default_branch
-            : undefined
-        }
+        value={props.value && targetBranches.includes(props.value) ? props.value : (targetBranches[0] ?? "")}
+        onChange={props.onChange}
       >
-        {branchesByCommittedDate(props.info.branches).map((branch) => (
-          <Form.Dropdown.Item key={branch.name} value={branch.name} title={branch.name} />
+        {targetBranches.map((name) => (
+          <Form.Dropdown.Item key={name} value={name} title={name} />
         ))}
       </Form.Dropdown>
     );
-  } else {
-    return <Form.Dropdown id="target_branch" title="Target branch" />;
   }
+  return (
+    <Form.Dropdown id="target_branch" title="Target branch" value={props.value} onChange={props.onChange}>
+      {props.value ? (
+        <Form.Dropdown.Item key={props.value} value={props.value} title={props.value} />
+      ) : (
+        <Form.Dropdown.Item key="_empty" value="" title="-" />
+      )}
+    </Form.Dropdown>
+  );
 }
 
 function ProjectDropdownItem(props: { project: Project }) {

@@ -42,8 +42,6 @@ export function BranchListItem(props: { branch: Branch; project: Project; onRefr
           <ActionPanel.Section>
             <CreateBranchAction project={props.project} branch={props.branch} onFinished={props.onRefresh} />
             <RenameBranchAction project={props.project} branch={props.branch} onFinished={props.onRefresh} />
-          </ActionPanel.Section>
-          <ActionPanel.Section>
             <RemoveBranchAction project={props.project} branch={props.branch} onFinished={props.onRefresh} />
           </ActionPanel.Section>
         </ActionPanel>
