@@ -9,7 +9,6 @@ import { Commit } from "./types";
 export function CommitListItem(props: { commit: Commit; projectFullPath?: string }) {
   return (
     <List.Item
-      key={props.commit.id}
       title={props.commit.title}
       keywords={[props.commit.message, props.commit.author_name, props.commit.author_email].filter(
         (keyword): keyword is string => !!keyword,

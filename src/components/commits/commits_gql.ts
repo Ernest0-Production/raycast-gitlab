@@ -3,7 +3,7 @@ import { getGitLabGQL, gitlab } from "../../common";
 import { getIdFromGqlId } from "../../utils";
 import { Commit } from "./types";
 
-export const MR_COMMITS_PAGE_SIZE = 20;
+const MR_COMMITS_PAGE_SIZE = 20;
 
 const COMMIT_LIST_FIELDS = gql`
   fragment CommitListFields on Commit {

@@ -6,9 +6,9 @@ import {
   confirmAlert,
   Form,
   Icon,
-  pop,
   showToast,
   Toast,
+  useNavigation,
 } from "@raycast/api";
 import { showFailureToast } from "@raycast/utils";
 import { gitlab } from "../common";
@@ -33,6 +33,8 @@ function BranchNameForm(props: {
   onSubmit: (branchName: string) => Promise<void>;
   onFinished?: () => void;
 }) {
+  const { pop } = useNavigation();
+
   async function submit(values: { branch_name: string }) {
     const branchName = values.branch_name.trim();
     if (branchName === "") {
@@ -82,18 +84,17 @@ function BranchNameForm(props: {
 }
 
 export function CreateMRAction(props: { project: Project; branch: Branch }) {
-  if (props.project.default_branch !== props.branch.name) {
-    return (
-      <Action.Push
-        icon={Icon.Pencil}
-        title="Create Merge Request"
-        shortcut={{ modifiers: ["cmd"], key: "m" }}
-        target={<MRCreateForm project={props.project} branch={props.branch.name} />}
-      />
-    );
-  } else {
+  if (props.project.default_branch === props.branch.name) {
     return null;
   }
+  return (
+    <Action.Push
+      icon={Icon.Pencil}
+      title="Create Merge Request"
+      shortcut={{ modifiers: ["cmd"], key: "m" }}
+      target={<MRCreateForm project={props.project} branch={props.branch.name} />}
+    />
+  );
 }
 
 export function ShowBranchCommitsAction(props: { project: Project; branch: Branch }) {

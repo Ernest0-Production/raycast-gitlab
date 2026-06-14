@@ -23,17 +23,12 @@ export function ShowCommitPipelineAction(props: { commit: Commit; projectFullPat
 }
 
 export function RefreshCommitsAction(props: { onRefreshJobs?: () => void }) {
-  const handle = () => {
-    if (props.onRefreshJobs) {
-      props.onRefreshJobs();
-    }
-  };
   return (
     <Action
       title="Refresh"
       icon={{ source: Icon.ArrowClockwise, tintColor: Color.PrimaryText }}
       shortcut={{ modifiers: ["cmd"], key: "r" }}
-      onAction={handle}
+      onAction={() => props.onRefreshJobs?.()}
     />
   );
 }

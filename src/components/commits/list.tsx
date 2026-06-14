@@ -14,7 +14,7 @@ import { RefreshCommitsAction } from "./actions";
 import { usePaginatedMergeRequestCommits, usePaginatedProjectCommits } from "./data";
 import { CommitListItem } from "./item";
 
-export const commitSearchBarPlaceholder = "Search commits by title, message, or author...";
+const commitSearchBarPlaceholder = "Search commits by title, message, or author...";
 
 function EventCommitListItem(props: { event: Event; onRefresh?: () => void }) {
   return (
@@ -53,10 +53,6 @@ function EventCommitListItem(props: { event: Event; onRefresh?: () => void }) {
   );
 }
 
-function RecentCommitsListEmptyView() {
-  return <List.EmptyView title="No Commits" icon={{ source: GitLabIcons.commit, tintColor: Color.PrimaryText }} />;
-}
-
 export function RecentCommitsList() {
   const [project, setProject] = useState<Project>();
   const { data, isLoading, revalidate } = useCachedPromise(
@@ -69,16 +65,12 @@ export function RecentCommitsList() {
       {(project ? data.filter((event) => event.project_id === project.id) : data).map((event) => (
         <EventCommitListItem event={event} key={`${event.id}`} onRefresh={revalidate} />
       ))}
-      <RecentCommitsListEmptyView />
+      <List.EmptyView title="No Commits" icon={{ source: GitLabIcons.commit, tintColor: Color.PrimaryText }} />
     </List>
   );
 }
 
 export type { Commit, CommitStatus } from "./types";
-
-function ProjectCommitListEmptyView() {
-  return <List.EmptyView title="No Commits" icon={{ source: GitLabIcons.commit, tintColor: Color.PrimaryText }} />;
-}
 
 export function MRCommitList(props: {
   projectID: number;
@@ -101,7 +93,7 @@ export function MRCommitList(props: {
       {commits.map((commit) => (
         <CommitListItem key={commit.id} commit={commit} projectFullPath={props.projectFullPath} />
       ))}
-      <ProjectCommitListEmptyView />
+      <List.EmptyView title="No Commits" icon={{ source: GitLabIcons.commit, tintColor: Color.PrimaryText }} />
     </List>
   );
 }
@@ -134,7 +126,7 @@ export function ProjectCommitList(props: { project: Project; refName?: string; n
       {commits.map((commit) => (
         <CommitListItem key={commit.id} commit={commit} projectFullPath={props.project.fullPath} />
       ))}
-      <ProjectCommitListEmptyView />
+      <List.EmptyView title="No Commits" icon={{ source: GitLabIcons.commit, tintColor: Color.PrimaryText }} />
     </List>
   );
 }
