@@ -21,6 +21,7 @@ import {
   createMRDiscussionNoteGql,
   fetchMRDiscussionDiffGql,
   fetchMRDiscussionsGqlPage,
+  resolveAvatarUrl,
   toggleMRDiscussionResolveGql,
 } from "./mr_discussions_gql";
 
@@ -37,7 +38,8 @@ function discussionUrl(discussion: MRDiscussion, mr: MergeRequest): string {
 }
 
 function discussionTitle(discussion: MRDiscussion): string {
-  return shortify(firstDiscussionNote(discussion)?.body.replace(/\s+/g, " ").trim() || "Discussion", 100);
+  const body = firstDiscussionNote(discussion)?.body.replace(/\s+/g, " ").trim() || "Discussion";
+  return shortify(body.replace(/\\(.)/g, "$1"), 100);
 }
 
 function discussionPositionMarkdown(note: MRDiscussionNote, mr: MergeRequest): string | undefined {
@@ -79,10 +81,12 @@ function discussionMarkdown(
   }
   blocks.push(
     notes
-      .map(
-        (note) =>
-          `**${note.author?.name ?? "Unknown"}** (*${formatDate(note.created_at)}*):  \n${optimizeMarkdownText(note.body, mr.project_web_url)}`,
-      )
+      .map((note) => {
+        const authorName = note.author?.name ?? "Unknown";
+        const avatarUrl = resolveAvatarUrl(note.author?.avatar_url);
+        const avatar = avatarUrl && `![](${avatarUrl}?raycast-width=28&raycast-height=28) `;
+        return `${avatar ?? ""}**${authorName}** (*${formatDate(note.created_at)}*):  \n${optimizeMarkdownText(note.body, mr.project_web_url)}`;
+      })
       .join("\n\n---\n\n"),
   );
   return blocks.join("\n\n");
@@ -182,7 +186,10 @@ function MRDiscussionListItem(props: {
       id={props.discussion.id}
       title={discussionTitle(props.discussion)}
       icon={{
-        value: { source: firstNote?.author?.avatar_url || Icon.SpeechBubble, mask: Image.Mask.Circle },
+        value: {
+          source: resolveAvatarUrl(firstNote?.author?.avatar_url) || Icon.SpeechBubble,
+          mask: Image.Mask.Circle,
+        },
         tooltip: firstNote?.author?.name,
       }}
       detail={<List.Item.Detail markdown={discussionMarkdown(props.discussion, props.mr, diff, isLoadingDiff)} />}

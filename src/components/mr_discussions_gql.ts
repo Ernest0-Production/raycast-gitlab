@@ -156,7 +156,7 @@ export function resetMRDiscussionsGqlCursors(cacheKey: string): void {
   endCursorsByCacheKey.delete(cacheKey);
 }
 
-function resolveAvatarUrl(avatarUrl: string | null | undefined): string {
+export function resolveAvatarUrl(avatarUrl: string | null | undefined): string {
   if (!avatarUrl) {
     return "";
   }
