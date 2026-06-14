@@ -11,7 +11,7 @@ import {
   Toast,
   useNavigation,
 } from "@raycast/api";
-import { showFailureToast, useCachedPromise, usePromise } from "@raycast/utils";
+import { showFailureToast, useCachedPromise } from "@raycast/utils";
 import { useEffect, useState } from "react";
 import { MRDiscussion, MRDiscussionNote, MergeRequest } from "../gitlabapi";
 import { formatDate, optimizeMarkdownText, shortify } from "../utils";
@@ -230,7 +230,7 @@ function MRDiscussionListItem(props: {
 
 export function MRDiscussionList(props: { mr: MergeRequest }) {
   const [selectedDiscussionId, setSelectedDiscussionId] = useState<string>();
-  const { data, isLoading, revalidate, pagination } = usePromise(
+  const { data, isLoading, revalidate, pagination } = useCachedPromise(
     (projectFullPath: string, mrIID: number) => async (options: { page: number }) => {
       const { discussions, hasMore } = await fetchMRDiscussionsGqlPage({
         cacheKey: `mr_discussions_${projectFullPath}_${mrIID}`,
@@ -241,8 +241,11 @@ export function MRDiscussionList(props: { mr: MergeRequest }) {
       return { data: discussions, hasMore };
     },
     [props.mr.project_full_path, props.mr.iid],
+    {
+      initialData: [],
+    },
   );
-  const discussions = (data ?? []).filter((discussion) => discussionNotes(discussion).length > 0);
+  const discussions = data.filter((discussion) => discussionNotes(discussion).length > 0);
   useEffect(() => {
     if (!selectedDiscussionId && discussions[0]) {
       setSelectedDiscussionId(discussions[0].id);
