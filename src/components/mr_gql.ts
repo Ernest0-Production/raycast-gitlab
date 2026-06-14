@@ -725,6 +725,8 @@ function resolveMRListSource(params: Record<string, any>, project?: Project, gro
       return { kind: "authored" };
     case MRScope.all:
       throw new Error("Scope All requires a project or group");
+    default:
+      throw new Error("Merge request list scope requires a project or group");
   }
 }
 

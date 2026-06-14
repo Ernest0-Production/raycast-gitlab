@@ -1,15 +1,10 @@
 import { gql } from "@apollo/client";
 import { getGitLabGQL, gitlab } from "../common";
 import { MRDiscussion, MRDiscussionNote, User } from "../gitlabapi";
-import { getIdFromGqlId } from "../utils";
-
-export const MR_DISCUSSIONS_PAGE_SIZE = 20;
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
+const MR_DISCUSSIONS_PAGE_SIZE = 20;
 
 const DISCUSSION_NOTE_FIELDS = gql`
   fragment DiscussionNoteFields on Note {
-    id
     body
     createdAt
     system
@@ -100,7 +95,6 @@ const MR_DISCUSSION_DIFF = gql`
 `;
 
 interface GqlDiscussionNoteNode {
-  id: string;
   body: string;
   createdAt: string;
   system: boolean;
@@ -152,10 +146,6 @@ interface GqlBlobNode {
 
 const endCursorsByCacheKey = new Map<string, string[]>();
 
-export function resetMRDiscussionsGqlCursors(cacheKey: string): void {
-  endCursorsByCacheKey.delete(cacheKey);
-}
-
 export function resolveAvatarUrl(avatarUrl: string | null | undefined): string {
   if (!avatarUrl) {
     return "";
@@ -200,7 +190,6 @@ function gqlDiscussionNoteToNote(node: GqlDiscussionNoteNode): MRDiscussionNote 
       } as User)
     : undefined;
   return {
-    id: getIdFromGqlId(node.id),
     body: node.body,
     author,
     created_at: node.createdAt,
@@ -268,7 +257,7 @@ async function fetchVisibleDiscussionGqlPage(options: {
   return { discussions, hasMore, endCursor: after };
 }
 
-async function fetchDiscussionGqlPage(options: {
+export async function fetchMRDiscussionsGqlPage(options: {
   cacheKey: string;
   page: number;
   projectFullPath: string;
@@ -310,15 +299,6 @@ async function fetchDiscussionGqlPage(options: {
     discussions: result.discussions,
     hasMore: result.hasMore,
   };
-}
-
-export async function fetchMRDiscussionsGqlPage(options: {
-  cacheKey: string;
-  page: number;
-  projectFullPath: string;
-  mrIID: number;
-}): Promise<{ discussions: MRDiscussion[]; hasMore: boolean }> {
-  return fetchDiscussionGqlPage(options);
 }
 
 function parseHunkHeader(line: string): { oldStart: number; newStart: number } | undefined {

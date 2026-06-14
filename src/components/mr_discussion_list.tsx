@@ -29,54 +29,26 @@ function discussionNotes(discussion: MRDiscussion): MRDiscussionNote[] {
   return (discussion.notes ?? []).filter((note) => !note.system);
 }
 
-function firstDiscussionNote(discussion: MRDiscussion): MRDiscussionNote | undefined {
-  return discussionNotes(discussion)[0];
-}
-
-function discussionUrl(discussion: MRDiscussion, mr: MergeRequest): string {
-  return firstDiscussionNote(discussion)?.web_url || mr.web_url;
-}
-
-function discussionTitle(discussion: MRDiscussion): string {
-  const body = firstDiscussionNote(discussion)?.body.replace(/\s+/g, " ").trim() || "Discussion";
-  return shortify(body.replace(/\\(.)/g, "$1"), 100);
-}
-
-function discussionPositionMarkdown(note: MRDiscussionNote, mr: MergeRequest): string | undefined {
-  if (!note.position?.file_path) {
-    return undefined;
-  }
-  const label = note.position.line ? `${note.position.file_path}:${note.position.line}` : note.position.file_path;
-  const url = note.web_url || mr.web_url;
-  return `[${label}](${url})`;
-}
-
-function diffMarkdown(diff: string | undefined): string | undefined {
-  if (!diff) {
-    return undefined;
-  }
-  return ["```diff", diff, "```"].join("\n");
-}
-
 function discussionMarkdown(
   discussion: MRDiscussion,
-  mr: MergeRequest,
+  mergeRequest: MergeRequest,
   diff: string | undefined,
   isLoadingDiff?: boolean,
 ): string {
   const notes = discussionNotes(discussion);
   const blocks: string[] = [];
-  const hasPosition = notes[0]?.position !== undefined;
-  const positionLine = notes[0] ? discussionPositionMarkdown(notes[0], mr) : undefined;
-  if (positionLine) {
-    blocks.push(positionLine);
+  const firstNote = notes[0];
+  if (firstNote?.position?.file_path) {
+    const label = firstNote.position.line
+      ? `${firstNote.position.file_path}:${firstNote.position.line}`
+      : firstNote.position.file_path;
+    blocks.push(`[${label}](${firstNote.web_url || mergeRequest.web_url})`);
   }
-  const diffBlock = diffMarkdown(diff);
-  if (diffBlock) {
-    blocks.push(diffBlock);
+  if (diff) {
+    blocks.push(["```diff", diff, "```"].join("\n"));
   } else if (isLoadingDiff) {
     blocks.push("_Loading diff..._");
-  } else if (hasPosition) {
+  } else if (firstNote?.position) {
     blocks.push("_Diff is unavailable for this position._");
   }
   blocks.push(
@@ -91,14 +63,14 @@ function discussionMarkdown(
           url.searchParams.set("raycast-height", "20");
           avatar = `![](${url.href}) `;
         }
-        return `${avatar ?? ""}**${authorName}** (*${formatDate(note.created_at)}*):  \n${optimizeMarkdownText(note.body, mr.project_web_url)}`;
+        return `${avatar ?? ""}**${authorName}** (*${formatDate(note.created_at)}*):  \n${optimizeMarkdownText(note.body, mergeRequest.project_web_url)}`;
       })
       .join("\n\n---\n\n"),
   );
   return blocks.join("\n\n");
 }
 
-function MRDiscussionReplyForm(props: { mr: MergeRequest; discussion: MRDiscussion; onReply: () => void }) {
+function MRDiscussionReplyForm(props: { mr: MergeRequest; discussion: MRDiscussion; onRevalidate: () => void }) {
   const { pop } = useNavigation();
 
   async function submit(values: { body: string }) {
@@ -116,7 +88,7 @@ function MRDiscussionReplyForm(props: { mr: MergeRequest; discussion: MRDiscussi
         body: values.body,
       });
       showToast(Toast.Style.Success, "Reply added");
-      props.onReply();
+      props.onRevalidate();
       pop();
     } catch (error) {
       showFailureToast(error, { title: "Failed to add reply" });
@@ -142,16 +114,16 @@ function MRDiscussionListItem(props: {
   mr: MergeRequest;
   discussion: MRDiscussion;
   isFocused: boolean;
-  onReply: () => void;
+  onRevalidate: () => void;
 }) {
-  const firstNote = firstDiscussionNote(props.discussion);
+  const firstNote = discussionNotes(props.discussion)[0];
   const position = firstNote?.position;
   const { data: diff, isLoading: isLoadingDiff } = useCachedPromise(
-    async (projectFullPath: string, position: MRDiscussionNote["position"]) => {
-      if (!position) {
+    async (projectFullPath: string, notePosition: MRDiscussionNote["position"]) => {
+      if (!notePosition) {
         return undefined;
       }
-      return fetchMRDiscussionDiffGql({ projectFullPath, position });
+      return fetchMRDiscussionDiffGql({ projectFullPath, position: notePosition });
     },
     [props.mr.project_full_path, position],
     {
@@ -159,14 +131,15 @@ function MRDiscussionListItem(props: {
     },
   );
   const isResolved = isDiscussionResolved(props.discussion);
+  const titleBody = firstNote?.body.replace(/\s+/g, " ").trim() || "Discussion";
 
   async function toggleResolved() {
     if (
       !(await confirmAlert({
-        title: isResolved ? "Unresolve Discussion?" : "Resolve Discussion?",
-        message: `${isResolved ? "Unresolve" : "Resolve"} this discussion in !${props.mr.iid}?`,
+        title: isResolved ? "Reopen thread?" : "Resolve thread?",
+        message: `${isResolved ? "Reopen" : "Resolve"} this discussion in !${props.mr.iid}?`,
         primaryAction: {
-          title: isResolved ? "Unresolve" : "Resolve",
+          title: isResolved ? "Reopen thread" : "Resolve thread",
         },
       }))
     ) {
@@ -175,14 +148,14 @@ function MRDiscussionListItem(props: {
     try {
       await showToast({
         style: Toast.Style.Animated,
-        title: isResolved ? "Unresolving discussion..." : "Resolving discussion...",
+        title: isResolved ? "Reopening thread..." : "Resolving thread...",
       });
       await toggleMRDiscussionResolveGql({ discussionId: props.discussion.id, resolve: !isResolved });
-      showToast(Toast.Style.Success, isResolved ? "Discussion unresolved" : "Discussion resolved");
-      props.onReply();
+      showToast(Toast.Style.Success, isResolved ? "Thread reopened" : "Thread resolved");
+      props.onRevalidate();
     } catch (error) {
       showFailureToast(error, {
-        title: isResolved ? "Failed to unresolve discussion" : "Failed to resolve discussion",
+        title: isResolved ? "Failed to reopen thread" : "Failed to resolve thread",
       });
     }
   }
@@ -190,13 +163,13 @@ function MRDiscussionListItem(props: {
   return (
     <List.Item
       id={props.discussion.id}
-      title={discussionTitle(props.discussion)}
+      title={shortify(titleBody.replace(/\\(.)/g, "$1"), 100)}
       icon={{
         value: {
           source: resolveAvatarUrl(firstNote?.author?.avatar_url) || Icon.SpeechBubble,
           mask: Image.Mask.Circle,
         },
-        tooltip: firstNote?.author?.name,
+        tooltip: firstNote?.author?.name ?? "",
       }}
       accessories={
         isResolved ? [{ icon: { source: Icon.CheckCircle, tintColor: Color.Green }, tooltip: "Resolved" }] : []
@@ -208,9 +181,11 @@ function MRDiscussionListItem(props: {
             <Action.Push
               title="Reply"
               icon={{ source: Icon.Message, tintColor: Color.PrimaryText }}
-              target={<MRDiscussionReplyForm mr={props.mr} discussion={props.discussion} onReply={props.onReply} />}
+              target={
+                <MRDiscussionReplyForm mr={props.mr} discussion={props.discussion} onRevalidate={props.onRevalidate} />
+              }
             />
-            <GitLabOpenInBrowserAction url={discussionUrl(props.discussion, props.mr)} />
+            <GitLabOpenInBrowserAction url={firstNote?.web_url || props.mr.web_url} />
             {props.discussion.resolvable && (
               <Action
                 title={isResolved ? "Reopen thread" : "Resolve thread"}
@@ -230,7 +205,12 @@ function MRDiscussionListItem(props: {
 
 export function MRDiscussionList(props: { mr: MergeRequest }) {
   const [selectedDiscussionId, setSelectedDiscussionId] = useState<string>();
-  const { data, isLoading, revalidate, pagination } = useCachedPromise(
+  const {
+    data: discussions,
+    isLoading,
+    revalidate,
+    pagination,
+  } = useCachedPromise(
     (projectFullPath: string, mrIID: number) => async (options: { page: number }) => {
       const { discussions, hasMore } = await fetchMRDiscussionsGqlPage({
         cacheKey: `mr_discussions_${projectFullPath}_${mrIID}`,
@@ -245,7 +225,6 @@ export function MRDiscussionList(props: { mr: MergeRequest }) {
       initialData: [],
     },
   );
-  const discussions = data.filter((discussion) => discussionNotes(discussion).length > 0);
   useEffect(() => {
     if (!selectedDiscussionId && discussions[0]) {
       setSelectedDiscussionId(discussions[0].id);
@@ -267,7 +246,7 @@ export function MRDiscussionList(props: { mr: MergeRequest }) {
           mr={props.mr}
           discussion={discussion}
           isFocused={discussion.id === selectedDiscussionId}
-          onReply={revalidate}
+          onRevalidate={revalidate}
         />
       ))}
       <List.EmptyView title="No Discussions" />

@@ -30,7 +30,6 @@ async function submit(values: MRFormValues) {
       throw Error("Please select a source branch");
     }
     const formValues = toFormValues(values as unknown as Record<string, unknown>);
-    console.log(formValues);
     await showToast({ style: Toast.Style.Animated, title: "Creating Merge Request..." });
     await gitlab.createMR(values.project_id, formValues);
     await showToast(Toast.Style.Success, "Merge Request created", "Merge Request creation successful");
@@ -112,10 +111,9 @@ export function MRCreateForm(props: {
   const { projectinfo, isLoadingProjectInfo } = useProjectMR(selectedProject);
   const members = projectinfo?.members || [];
 
-  let project: Project | undefined;
-  if (selectedProject) {
-    project = projects.find((candidate) => candidate.id.toString() === selectedProject);
-  }
+  const project = selectedProject
+    ? projects.find((candidate) => candidate.id.toString() === selectedProject)
+    : undefined;
   const { milestoneInfo, isLoadingMilestoneInfo } = useMilestones(project?.group_id);
 
   const isLoading = isLoadingProjects || isLoadingProjectInfo || isLoadingMilestoneInfo;
@@ -324,42 +322,33 @@ function SourceBranchDropdown(props: {
   onChange: (value: string) => void;
 }) {
   if (props.project && props.info) {
-    const branches = branchesByCommittedDate(props.info.branches).filter(
-      (branch) => branch.name !== props.project?.default_branch,
-    );
-    const branchNames = new Set(branches.map((branch) => branch.name));
-    if (props.value) {
-      branchNames.add(props.value);
+    const branchNames = branchesByCommittedDate(props.info.branches)
+      .filter((branch) => branch.name !== props.project?.default_branch)
+      .map((branch) => branch.name);
+    if (props.value && !branchNames.includes(props.value)) {
+      branchNames.unshift(props.value);
+    } else if (props.value) {
+      const selectedIndex = branchNames.indexOf(props.value);
+      if (selectedIndex > 0) {
+        branchNames.splice(selectedIndex, 1);
+        branchNames.unshift(props.value);
+      }
     }
-    const sourceBranches = [...branchNames].sort((left, right) => {
-      if (left === props.value) {
-        return -1;
-      }
-      if (right === props.value) {
-        return 1;
-      }
-      return left.localeCompare(right);
-    });
     return (
       <Form.Dropdown
         id="source_branch"
         title="Source Branch"
-        value={props.value && sourceBranches.includes(props.value) ? props.value : sourceBranches[0] ?? ""}
+        value={props.value && branchNames.includes(props.value) ? props.value : (branchNames[0] ?? "")}
         onChange={props.onChange}
       >
-        {sourceBranches.map((name) => (
+        {branchNames.map((name) => (
           <Form.Dropdown.Item key={name} value={name} title={name} />
         ))}
       </Form.Dropdown>
     );
   }
   return (
-    <Form.Dropdown
-      id="source_branch"
-      title="Source Branch"
-      value={props.value}
-      onChange={props.onChange}
-    >
+    <Form.Dropdown id="source_branch" title="Source Branch" value={props.value} onChange={props.onChange}>
       {props.value ? (
         <Form.Dropdown.Item key={props.value} value={props.value} title={props.value} />
       ) : (
@@ -376,28 +365,26 @@ function TargetBranchDropdown(props: {
   onChange: (value: string) => void;
 }) {
   if (props.project && props.info) {
-    const branches = branchesByCommittedDate(props.info.branches);
-    const branchNames = new Set(branches.map((branch) => branch.name));
-    if (props.value) {
-      branchNames.add(props.value);
+    const branchNames = branchesByCommittedDate(props.info.branches).map((branch) => branch.name);
+    if (props.value && !branchNames.includes(props.value)) {
+      branchNames.push(props.value);
     }
-    const targetBranches = [...branchNames].sort((left, right) => {
-      if (left === props.project?.default_branch) {
-        return -1;
+    const defaultBranch = props.project.default_branch;
+    if (defaultBranch && branchNames.includes(defaultBranch)) {
+      const defaultIndex = branchNames.indexOf(defaultBranch);
+      if (defaultIndex > 0) {
+        branchNames.splice(defaultIndex, 1);
+        branchNames.unshift(defaultBranch);
       }
-      if (right === props.project?.default_branch) {
-        return 1;
-      }
-      return left.localeCompare(right);
-    });
+    }
     return (
       <Form.Dropdown
         id="target_branch"
         title="Target branch"
-        value={props.value && targetBranches.includes(props.value) ? props.value : (targetBranches[0] ?? "")}
+        value={props.value && branchNames.includes(props.value) ? props.value : (branchNames[0] ?? "")}
         onChange={props.onChange}
       >
-        {targetBranches.map((name) => (
+        {branchNames.map((name) => (
           <Form.Dropdown.Item key={name} value={name} title={name} />
         ))}
       </Form.Dropdown>

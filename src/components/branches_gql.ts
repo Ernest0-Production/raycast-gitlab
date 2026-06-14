@@ -2,8 +2,8 @@ import { gql } from "@apollo/client";
 import { getGitLabGQL, gitlab } from "../common";
 import { Branch, Project } from "../gitlabapi";
 
-export const BRANCH_LIST_PAGE_SIZE = 20;
-export const BRANCH_DROPDOWN_LIMIT = 100;
+const BRANCH_LIST_PAGE_SIZE = 20;
+const BRANCH_DROPDOWN_LIMIT = 100;
 
 const BRANCH_NAMES = gql`
   query ProjectBranchNames($fullPath: ID!, $searchPattern: String!, $offset: Int!, $limit: Int!) {
@@ -176,7 +176,7 @@ async function fetchBranchNamesGql(
   searchPattern: string,
   offset: number,
   limit: number,
-): Promise<string[] | undefined> {
+): Promise<{ names: string[]; rootRef: string | null } | undefined> {
   try {
     const response = await getGitLabGQL().client.query({
       query: BRANCH_NAMES,
@@ -187,8 +187,15 @@ async function fetchBranchNamesGql(
         limit,
       },
     });
-    const names = response.data?.project?.repository?.branchNames;
-    return Array.isArray(names) ? names : undefined;
+    const repository = response.data?.project?.repository;
+    if (!repository) {
+      return undefined;
+    }
+    const names = repository.branchNames;
+    return {
+      names: Array.isArray(names) ? names : [],
+      rootRef: repository.rootRef ?? null,
+    };
   } catch {
     return undefined;
   }
@@ -200,31 +207,13 @@ export async function fetchBranchesGqlPage(options: {
   page: number;
 }): Promise<{ branches: Branch[]; hasMore: boolean }> {
   const offset = options.page * BRANCH_LIST_PAGE_SIZE;
-  let names: string[] | undefined;
-  let rootRef: string | null = null;
+  const gqlResult = await fetchBranchNamesGql(options.project, options.search, offset, BRANCH_LIST_PAGE_SIZE);
 
-  try {
-    const response = await getGitLabGQL().client.query({
-      query: BRANCH_NAMES,
-      variables: {
-        fullPath: options.project.fullPath,
-        searchPattern: options.search,
-        offset,
-        limit: BRANCH_LIST_PAGE_SIZE,
-      },
-    });
-    const repository = response.data?.project?.repository;
-    if (repository) {
-      names = repository.branchNames ?? [];
-      rootRef = repository.rootRef ?? null;
-    }
-  } catch {
-    names = undefined;
-  }
-
-  if (!names) {
+  if (!gqlResult) {
     return fetchBranchesRestPage(options);
   }
+
+  const { names, rootRef } = gqlResult;
 
   if (names.length === 0 && options.search === "" && options.page === 0) {
     const restPage = await fetchBranchesRestPage(options);
@@ -240,17 +229,15 @@ export async function fetchBranchesGqlPage(options: {
   const rules = await getBranchRules(options.project);
   const commitTitles = await fetchBranchCommitTitles(options.project, names);
   return {
-    branches: names.map((name) =>
-      mapBranch(name, options.project, rootRef, rules, commitTitles.get(name)),
-    ),
+    branches: names.map((name) => mapBranch(name, options.project, rootRef, rules, commitTitles.get(name))),
     hasMore: names.length === BRANCH_LIST_PAGE_SIZE,
   };
 }
 
 export async function fetchBranchNames(project: Project): Promise<string[]> {
-  const gqlNames = await fetchBranchNamesGql(project, "", 0, BRANCH_DROPDOWN_LIMIT);
-  if (gqlNames && gqlNames.length > 0) {
-    return gqlNames;
+  const gqlResult = await fetchBranchNamesGql(project, "", 0, BRANCH_DROPDOWN_LIMIT);
+  if (gqlResult && gqlResult.names.length > 0) {
+    return gqlResult.names;
   }
   const { branches } = await fetchBranchesRestPage({
     project,
@@ -261,5 +248,5 @@ export async function fetchBranchNames(project: Project): Promise<string[]> {
   if (branches.length > 0) {
     return branches.map((branch) => branch.name);
   }
-  return gqlNames ?? [];
+  return gqlResult?.names ?? [];
 }

@@ -8,14 +8,11 @@ const MR_COMMITS_PAGE_SIZE = 20;
 const COMMIT_LIST_FIELDS = gql`
   fragment CommitListFields on Commit {
     sha
-    shortId
     title
     message
     authorName
     authorEmail
-    committerName
     authoredDate
-    committedDate
     webUrl
     author {
       avatarUrl
@@ -81,14 +78,11 @@ interface GqlPipelineNode {
 
 interface GqlCommitNode {
   sha: string;
-  shortId: string;
   title: string;
   message?: string | null;
   authorName?: string | null;
   authorEmail?: string | null;
-  committerName?: string | null;
   authoredDate: string;
-  committedDate: string;
   webUrl: string;
   author?: { avatarUrl?: string | null } | null;
   pipelines?: { nodes: GqlPipelineNode[] } | null;
@@ -104,10 +98,6 @@ interface GqlCommitConnection {
 
 const endCursorsByCacheKey = new Map<string, string[]>();
 const projectCommitEndCursorsByCacheKey = new Map<string, string[]>();
-
-export function resetMRCommitsGqlCursors(cacheKey: string): void {
-  endCursorsByCacheKey.delete(cacheKey);
-}
 
 export function resetProjectCommitsGqlCursors(cacheKey: string): void {
   projectCommitEndCursorsByCacheKey.delete(cacheKey);
@@ -151,21 +141,16 @@ function gqlCommitToCommit(node: GqlCommitNode): Commit {
   const pipeline = node.pipelines?.nodes?.[0];
   return {
     id: node.sha,
-    short_id: node.shortId,
     title: node.title,
     created_at: node.authoredDate,
     message: node.message ?? "",
-    committer_name: node.committerName ?? "",
     author_name: node.authorName ?? "",
     author_email: node.authorEmail ?? undefined,
-    committed_date: node.committedDate,
     web_url: node.webUrl,
     author_avatar_url: resolveAvatarUrl(node.author?.avatarUrl),
     pipeline_status: pipelineStatusFromGql(pipeline),
     head_pipeline:
-      pipeline?.id && pipeline?.iid
-        ? { id: getIdFromGqlId(pipeline.id), iid: `${pipeline.iid}` }
-        : undefined,
+      pipeline?.id && pipeline?.iid ? { id: getIdFromGqlId(pipeline.id), iid: `${pipeline.iid}` } : undefined,
   };
 }
 

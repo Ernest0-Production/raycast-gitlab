@@ -3,7 +3,7 @@ import { Group, MergeRequest, Project } from "../gitlabapi";
 import { GitLabIcons } from "../icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { hashRecord, optimizeMarkdownText, Query, tokenizeQueryText } from "../utils";
-import { getMRDiscussionMetadataLabel, discussionStatsFromMergeRequest } from "./mr_discussions";
+import { discussionLabelFromMergeRequest } from "./mr_discussions";
 import { getMRStateListIcon } from "./mr_status";
 import {
   MRCopySection,
@@ -132,7 +132,7 @@ export function MRDetail(props: { mr: MergeRequest; onDataChange?: () => void })
       metadata={
         <MRDetailMetadata
           mr={mergeRequest}
-          discussionLabel={getMRDiscussionMetadataLabel(discussionStatsFromMergeRequest(mergeRequest))}
+          discussionLabel={discussionLabelFromMergeRequest(mergeRequest)}
         />
       }
     />
@@ -149,7 +149,7 @@ export function MRListDetail(props: { mr: MergeRequest }) {
         isShowingMetadata ? (
           <MRListDetailMetadata
             mr={props.mr}
-            discussionLabel={getMRDiscussionMetadataLabel(discussionStatsFromMergeRequest(props.mr))}
+            discussionLabel={discussionLabelFromMergeRequest(props.mr)}
           />
         ) : undefined
       }
@@ -262,7 +262,7 @@ export function MRListItem(props: {
     ? { source: props.mr.author?.avatar_url || "", mask: Image.Mask.Circle }
     : undefined;
 
-  const discussionStats = !props.isShowingDetail ? discussionStatsFromMergeRequest(props.mr) : undefined;
+  const discussionLabel = !props.isShowingDetail ? discussionLabelFromMergeRequest(props.mr) : undefined;
   const accessories: List.Item.Accessory[] = [];
   if (!props.isShowingDetail) {
     accessories.push(
@@ -275,10 +275,10 @@ export function MRListItem(props: {
             },
           ]
         : []),
-      ...(discussionStats
+      ...(discussionLabel
         ? [
             {
-              text: `${discussionStats.resolved}/${discussionStats.resolvableTotal}`,
+              text: discussionLabel,
               icon: { source: Icon.SpeechBubble, tintColor: Color.PrimaryText },
               tooltip: "Resolved discussions",
             },

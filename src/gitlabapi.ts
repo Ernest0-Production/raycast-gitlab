@@ -453,7 +453,6 @@ export interface MRDiscussionNotePosition {
 }
 
 export interface MRDiscussionNote {
-  id: number;
   body: string;
   author?: User;
   created_at: string;
@@ -721,7 +720,7 @@ export class GitLab {
         ...options,
       });
       if (!response.ok) {
-        await warnGitLabApiErrorResponse(response, fullUrl);
+        await warnGitLabApiErrorResponse(response, typeof fullUrl === "string" ? fullUrl : fullUrl.toString());
       }
       return response;
     };

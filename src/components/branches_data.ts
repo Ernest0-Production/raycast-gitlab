@@ -7,11 +7,7 @@ import { fetchBranchesGqlPage } from "./branches_gql";
 
 export type ListPagination = List.Props["pagination"];
 
-export function usePaginatedBranches(options: {
-  project: Project;
-  search: string;
-  cacheKey: string;
-}): {
+export function usePaginatedBranches(options: { project: Project; search: string; cacheKey: string }): {
   branches: Branch[];
   isLoading: boolean;
   error: string | undefined;
@@ -25,6 +21,7 @@ export function usePaginatedBranches(options: {
 
   const { data, isLoading, error, revalidate, pagination } = useCachedPromise(
     (cacheKey: string) => async (paginationOptions: { page: number }) => {
+      void cacheKey;
       const { branches, hasMore } = await fetchBranchesGqlPage({
         project: projectRef.current,
         search: searchRef.current,
