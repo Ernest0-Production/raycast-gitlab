@@ -221,6 +221,10 @@ function gqlDiscussionToDiscussion(node: GqlDiscussionNode): MRDiscussion {
   };
 }
 
+function hasUserNotes(discussion: MRDiscussion): boolean {
+  return discussion.notes?.some((note) => !note.system) ?? false;
+}
+
 async function queryMRDiscussionsConnection(
   projectFullPath: string,
   mrIID: number,
@@ -242,6 +246,28 @@ async function queryMRDiscussionsConnection(
   return connection;
 }
 
+async function fetchVisibleDiscussionGqlPage(options: {
+  projectFullPath: string;
+  mrIID: number;
+  after?: string;
+}): Promise<{ discussions: MRDiscussion[]; hasMore: boolean; endCursor?: string }> {
+  const discussions: MRDiscussion[] = [];
+  let after = options.after;
+  let hasMore = true;
+
+  while (discussions.length < MR_DISCUSSIONS_PAGE_SIZE && hasMore) {
+    const connection = await queryMRDiscussionsConnection(options.projectFullPath, options.mrIID, {
+      first: MR_DISCUSSIONS_PAGE_SIZE,
+      after,
+    });
+    discussions.push(...connection.nodes.map(gqlDiscussionToDiscussion).filter(hasUserNotes));
+    after = connection.pageInfo.endCursor ?? undefined;
+    hasMore = connection.pageInfo.hasNextPage;
+  }
+
+  return { discussions, hasMore, endCursor: after };
+}
+
 async function fetchDiscussionGqlPage(options: {
   cacheKey: string;
   page: number;
@@ -261,28 +287,28 @@ async function fetchDiscussionGqlPage(options: {
 
   if (page > 0 && cursors.length < page) {
     for (let index = cursors.length; index < page; index += 1) {
-      const after = index === 0 ? undefined : cursors[index - 1];
-      const connection = await queryMRDiscussionsConnection(projectFullPath, mrIID, {
-        first: MR_DISCUSSIONS_PAGE_SIZE,
-        after,
+      const result = await fetchVisibleDiscussionGqlPage({
+        projectFullPath,
+        mrIID,
+        after: index === 0 ? undefined : cursors[index - 1],
       });
-      cursors[index] = connection.pageInfo.endCursor ?? "";
-      if (!connection.pageInfo.hasNextPage) {
+      cursors[index] = result.endCursor ?? "";
+      if (!result.hasMore) {
         return { discussions: [], hasMore: false };
       }
     }
   }
 
-  const after = page > 0 ? cursors[page - 1] : undefined;
-  const connection = await queryMRDiscussionsConnection(projectFullPath, mrIID, {
-    first: MR_DISCUSSIONS_PAGE_SIZE,
-    after,
+  const result = await fetchVisibleDiscussionGqlPage({
+    projectFullPath,
+    mrIID,
+    after: page > 0 ? cursors[page - 1] : undefined,
   });
-  cursors[page] = connection.pageInfo.endCursor ?? "";
+  cursors[page] = result.endCursor ?? "";
 
   return {
-    discussions: connection.nodes.map(gqlDiscussionToDiscussion),
-    hasMore: connection.pageInfo.hasNextPage,
+    discussions: result.discussions,
+    hasMore: result.hasMore,
   };
 }
 

@@ -30,7 +30,7 @@ function discussionNotes(discussion: MRDiscussion): MRDiscussionNote[] {
 }
 
 function firstDiscussionNote(discussion: MRDiscussion): MRDiscussionNote | undefined {
-  return discussionNotes(discussion)[0] ?? discussion.notes?.[0];
+  return discussionNotes(discussion)[0];
 }
 
 function discussionUrl(discussion: MRDiscussion, mr: MergeRequest): string {
@@ -242,7 +242,7 @@ export function MRDiscussionList(props: { mr: MergeRequest }) {
     },
     [props.mr.project_full_path, props.mr.iid],
   );
-  const discussions = data ?? [];
+  const discussions = (data ?? []).filter((discussion) => discussionNotes(discussion).length > 0);
   useEffect(() => {
     if (!selectedDiscussionId && discussions[0]) {
       setSelectedDiscussionId(discussions[0].id);
