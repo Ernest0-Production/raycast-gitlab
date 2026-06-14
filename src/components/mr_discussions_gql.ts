@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { getGitLabGQL, gitlab } from "../common";
 import { MRDiscussion, MRDiscussionNote, User } from "../gitlabapi";
-const MR_DISCUSSIONS_PAGE_SIZE = 20;
+const MR_DISCUSSIONS_PAGE_SIZE = 25;
 
 const DISCUSSION_NOTE_FIELDS = gql`
   fragment DiscussionNoteFields on Note {

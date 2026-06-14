@@ -326,6 +326,9 @@ export function ShowMRPipelinesAction(props: { mr: MergeRequest }) {
 }
 
 export function ShowMRDiscussionsAction(props: { mr: MergeRequest }) {
+  if (props.mr.resolvable_discussions_count === undefined || props.mr.resolvable_discussions_count <= 0) {
+    return null;
+  }
   return (
     <Action.Push
       title="Show Discussions"

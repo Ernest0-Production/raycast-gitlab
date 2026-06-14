@@ -63,7 +63,7 @@ function discussionMarkdown(
           url.searchParams.set("raycast-height", "20");
           avatar = `![](${url.href}) `;
         }
-        return `${avatar ?? ""}**${authorName}** (*${formatDate(note.created_at)}*):  \n${optimizeMarkdownText(note.body, mergeRequest.project_web_url)}`;
+        return `${avatar ?? ""}**${authorName}** • ${formatDate(note.created_at)}:  \n${optimizeMarkdownText(note.body, mergeRequest.project_web_url)}`;
       })
       .join("\n\n---\n\n"),
   );
@@ -98,7 +98,6 @@ function MRDiscussionReplyForm(props: { mr: MergeRequest; discussion: MRDiscussi
   return (
     <Form
       navigationTitle="Reply to Discussion"
-      enableDrafts
       actions={
         <ActionPanel>
           <Action.SubmitForm title="Reply" onSubmit={submit} />
@@ -190,7 +189,7 @@ function MRDiscussionListItem(props: {
               <Action
                 title={isResolved ? "Reopen thread" : "Resolve thread"}
                 icon={{
-                  source: isResolved ? Icon.XmarkCircle : Icon.Checkmark,
+                  source: isResolved ? Icon.RotateAntiClockwise : Icon.Checkmark,
                   tintColor: isResolved ? Color.Red : Color.Green,
                 }}
                 onAction={toggleResolved}

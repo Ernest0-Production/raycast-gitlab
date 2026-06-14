@@ -278,7 +278,7 @@ export function MRListItem(props: {
       ...(discussionLabel
         ? [
             {
-              text: discussionLabel,
+              tag: { value: discussionLabel },
               icon: { source: Icon.SpeechBubble, tintColor: Color.PrimaryText },
               tooltip: "Resolved discussions",
             },
