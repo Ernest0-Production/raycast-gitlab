@@ -7,6 +7,7 @@ import { discussionLabelFromMergeRequest } from "./mr_discussions";
 import { getMRStateListIcon } from "./mr_status";
 import {
   MRCopySection,
+  EditMRAction,
   MRItemActions,
   ShowMRCommitsAction,
   ShowMRDiscussionsAction,
@@ -122,6 +123,7 @@ export function MRDetail(props: { mr: MergeRequest; onDataChange?: () => void })
         <ActionPanel>
           <ActionPanel.Section>
             <GitLabOpenInBrowserAction url={mergeRequest.web_url} />
+            <EditMRAction mr={mergeRequest} onUpdated={refreshMergeRequest} />
             <ShowMRCommitsAction mr={mergeRequest} />
             <ShowMRPipelinesAction mr={mergeRequest} />
             <ShowMRDiscussionsAction mr={mergeRequest} />
@@ -331,6 +333,7 @@ export function MRListItem(props: {
               target={<MRDetail mr={props.mr} onDataChange={props.refreshData} />}
             />
             <GitLabOpenInBrowserAction url={props.mr.web_url} />
+            <EditMRAction mr={props.mr} onUpdated={props.refreshData} />
             <ShowMRCommitsAction mr={props.mr} />
             <ShowMRPipelinesAction mr={props.mr} />
             <ShowMRDiscussionsAction mr={props.mr} />

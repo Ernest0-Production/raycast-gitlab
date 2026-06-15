@@ -1,5 +1,5 @@
-import { Form, Icon, popToRoot, Image, ActionPanel, Action, showToast, Toast } from "@raycast/api";
-import { Project, Branch, Issue, TemplateDetail } from "../gitlabapi";
+import { Form, Icon, popToRoot, Image, ActionPanel, Action, showToast, Toast, useNavigation } from "@raycast/api";
+import { Project, Branch, Issue, TemplateDetail, MergeRequest } from "../gitlabapi";
 import { gitlab } from "../common";
 import { useState, useEffect, useRef } from "react";
 import { showFailureToast, useCachedPromise, useCachedState, usePromise } from "@raycast/utils";
@@ -282,6 +282,190 @@ export function MRCreateForm(props: {
         id="remove_source_branch"
         label="Delete source branch when merge request is accepted"
         value={removeBranch !== undefined ? removeBranch : (project?.remove_source_branch_after_merge ?? true)}
+        onChange={setRemoveBranch}
+      />
+    </Form>
+  );
+}
+
+interface MREditFormValues {
+  title: string;
+  description: string;
+  source_branch: string;
+  target_branch: string;
+  assignee_ids: string[];
+  reviewer_ids: string[];
+  labels: string[];
+  milestone_id: string;
+  remove_source_branch: boolean;
+  is_draft: boolean;
+}
+
+const mrDraftTitlePrefix = "Draft: ";
+
+export function MREditForm(props: { mr: MergeRequest; onUpdated?: () => void }) {
+  const { pop } = useNavigation();
+  const { projectinfo, isLoadingProjectInfo } = useProjectMR(props.mr.project_id.toString());
+  const { data: project, isLoading: isLoadingProject } = usePromise(
+    (projectId: number) => gitlab.getProject(projectId),
+    [props.mr.project_id],
+  );
+  const { milestoneInfo, isLoadingMilestoneInfo } = useMilestones(project?.group_id);
+  const members = projectinfo?.members || [];
+  const assigneePickerMembers = [
+    ...new Map(
+      [...members, ...props.mr.assignees].map((member) => [member.id, member]),
+    ).values(),
+  ];
+  const reviewerPickerMembers = [
+    ...new Map(
+      [...members, ...props.mr.reviewers].map((member) => [member.id, member]),
+    ).values(),
+  ];
+  const labelPickerOptions = [
+    ...new Map(
+      [...(projectinfo?.labels || []), ...props.mr.labels].map((label) => [label.name, label]),
+    ).values(),
+  ];
+  const milestonePickerOptions = [
+    ...new Map(
+      [
+        ...(projectinfo?.milestones || []),
+        ...(milestoneInfo || []),
+        ...(props.mr.milestone ? [props.mr.milestone] : []),
+      ].map((milestone) => [milestone.id, milestone]),
+    ).values(),
+  ];
+
+  const [description, setDescription] = useState(props.mr.description);
+  const [title, setTitle] = useState(() => props.mr.title);
+  const [isDraft, setIsDraft] = useState(
+    () => props.mr.draft || props.mr.title.startsWith(mrDraftTitlePrefix),
+  );
+  const [sourceBranch, setSourceBranch] = useState(props.mr.source_branch);
+  const [targetBranch, setTargetBranch] = useState(props.mr.target_branch);
+  const [removeBranch, setRemoveBranch] = useState(props.mr.force_remove_source_branch ?? false);
+
+  function handleDraftChange(value: boolean) {
+    setIsDraft(value);
+    setTitle((current) => {
+      const withoutPrefix = current.startsWith(mrDraftTitlePrefix)
+        ? current.slice(mrDraftTitlePrefix.length)
+        : current;
+      return value ? `${mrDraftTitlePrefix}${withoutPrefix}` : withoutPrefix;
+    });
+  }
+
+  async function handleSubmit(values: MREditFormValues) {
+    try {
+      const titleWithoutPrefix = values.title.startsWith(mrDraftTitlePrefix)
+        ? values.title.slice(mrDraftTitlePrefix.length)
+        : values.title;
+      if (titleWithoutPrefix === "") {
+        throw Error("Please enter a title");
+      }
+      const finalTitle = values.is_draft ? `${mrDraftTitlePrefix}${titleWithoutPrefix}` : titleWithoutPrefix;
+      const formValues = toFormValues({
+        ...values,
+        title: finalTitle,
+      } as unknown as Record<string, unknown>);
+      delete formValues.is_draft;
+      if (values.remove_source_branch === false) {
+        formValues.remove_source_branch = "false";
+      }
+      await showToast({ style: Toast.Style.Animated, title: "Updating Merge Request..." });
+      await gitlab.updateMR(props.mr.project_id, props.mr.iid, formValues);
+      await showToast(Toast.Style.Success, "Merge Request updated", "Merge Request update successful");
+      props.onUpdated?.();
+      pop();
+    } catch (error) {
+      await showFailureToast(error, { title: "Cannot update Merge Request" });
+    }
+  }
+
+  return (
+    <Form
+      navigationTitle="Edit Merge Request"
+      isLoading={isLoadingProjectInfo || isLoadingProject || isLoadingMilestoneInfo}
+      actions={
+        <ActionPanel>
+          <Action.SubmitForm title="Save Changes" onSubmit={handleSubmit} />
+        </ActionPanel>
+      }
+    >
+      <SourceBranchDropdown project={project} info={projectinfo} value={sourceBranch} onChange={setSourceBranch} />
+      <TargetBranchDropdown project={project} info={projectinfo} value={targetBranch} onChange={setTargetBranch} />
+      <Form.Separator />
+      <Form.TextField id="title" title="Title" placeholder="Enter title" value={title} onChange={setTitle} />
+      <Form.Checkbox id="is_draft" label="Mark as Draft" value={isDraft} onChange={handleDraftChange} />
+      <Form.TextArea
+        id="description"
+        title="Description"
+        placeholder="Enter description"
+        enableMarkdown
+        autoFocus
+        value={description}
+        onChange={setDescription}
+      />
+      <Form.TagPicker
+        id="assignee_ids"
+        title="Assignees"
+        placeholder="Type or choose an assignee"
+        defaultValue={props.mr.assignees.map((assignee) => assignee.id.toString())}
+      >
+        {assigneePickerMembers.map((member) => (
+          <Form.TagPicker.Item
+            key={member.id.toString()}
+            value={member.id.toString()}
+            title={member.name || member.username}
+            icon={{ source: member.avatar_url, mask: Image.Mask.Circle }}
+          />
+        ))}
+      </Form.TagPicker>
+      <Form.TagPicker
+        id="reviewer_ids"
+        title="Reviewers"
+        placeholder="Type or choose a reviewer"
+        defaultValue={props.mr.reviewers.map((reviewer) => reviewer.id.toString())}
+      >
+        {reviewerPickerMembers.map((member) => (
+          <Form.TagPicker.Item
+            key={member.id.toString()}
+            value={member.id.toString()}
+            title={member.name || member.username}
+            icon={{ source: member.avatar_url }}
+          />
+        ))}
+      </Form.TagPicker>
+      <Form.TagPicker
+        id="labels"
+        title="Labels"
+        placeholder="Type or choose an label"
+        defaultValue={props.mr.labels.map((label) => label.name)}
+      >
+        {labelPickerOptions.map((label) => (
+          <Form.TagPicker.Item
+            key={label.name}
+            value={label.name}
+            title={label.name}
+            icon={{ source: Icon.Circle, tintColor: label.color }}
+          />
+        ))}
+      </Form.TagPicker>
+      <Form.Dropdown
+        id="milestone_id"
+        title="Milestone"
+        defaultValue={props.mr.milestone?.id ? props.mr.milestone.id.toString() : ""}
+      >
+        <Form.Dropdown.Item key={"no_milestone"} value={""} title={"-"} />
+        {milestonePickerOptions.map((milestone) => (
+          <Form.Dropdown.Item key={milestone.id} value={milestone.id.toString()} title={milestone.title} />
+        ))}
+      </Form.Dropdown>
+      <Form.Checkbox
+        id="remove_source_branch"
+        label="Delete source branch when merge request is accepted"
+        value={removeBranch}
         onChange={setRemoveBranch}
       />
     </Form>

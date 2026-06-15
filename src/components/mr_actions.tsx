@@ -16,6 +16,7 @@ import { MergeRequest } from "../gitlabapi";
 import { GitLabIcons } from "../icons";
 import { copyMarkdownShortcut, copyShortcut } from "../utils";
 import { MRCommitList } from "./commits/list";
+import { MREditForm } from "./mr_create";
 import { MRDiscussionList } from "./mr_discussion_list";
 import { MRPipelineList } from "./mr_pipelines";
 import { findTodoForMR, useTodos } from "./todo/utils";
@@ -23,6 +24,20 @@ import { showFailureToast } from "@raycast/utils";
 
 async function createNote(mr: MergeRequest, body: string): Promise<void> {
   return await gitlab.post(`projects/${mr.project_id}/merge_requests/${mr.iid}/notes`, { body: body });
+}
+
+export function EditMRAction(props: { mr: MergeRequest; onUpdated?: () => void }): React.ReactElement | null {
+  if (props.mr.user?.can_update !== true) {
+    return null;
+  }
+  return (
+    <Action.Push
+      title="Edit Merge Request"
+      shortcut={{ modifiers: ["cmd"], key: "e" }}
+      icon={{ source: Icon.Pencil, tintColor: Color.Yellow }}
+      target={<MREditForm mr={props.mr} onUpdated={props.onUpdated} />}
+    />
+  );
 }
 
 export function CloseMRAction(props: { mr: MergeRequest; finished?: () => void }) {

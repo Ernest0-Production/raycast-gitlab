@@ -472,6 +472,7 @@ export interface MRDiscussion {
 
 export interface MergeRequestUser {
   can_merge?: boolean;
+  can_update?: boolean;
   approved?: boolean;
 }
 
@@ -979,6 +980,10 @@ export class GitLab {
 
   async createMR(projectID: number, data: { [key: string]: any }): Promise<void> {
     await this.post(`projects/${projectID}/merge_requests`, data);
+  }
+
+  async updateMR(projectID: number, mrIID: number, data: { [key: string]: any }): Promise<void> {
+    await this.put(`projects/${projectID}/merge_requests/${mrIID}`, data);
   }
 
   async getProjectMember(projectId: number): Promise<User[]> {

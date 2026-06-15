@@ -60,6 +60,7 @@ const MERGE_REQUEST_LIST_FIELDS = gql`
       }
     }
     milestone {
+      id
       title
     }
     headPipeline {
@@ -82,6 +83,7 @@ const MERGE_REQUEST_LIST_FIELDS = gql`
     }
     userPermissions {
       canMerge
+      updateMergeRequest
     }
     approvedBy {
       nodes {
@@ -388,10 +390,10 @@ interface GqlMRListNode {
   labels?: {
     nodes: { id: string; title: string; color: string }[];
   };
-  milestone?: { title: string } | null;
+  milestone?: { id: string; title: string } | null;
   headPipeline?: GqlPipelineNode | null;
   pipelines?: { nodes: GqlPipelineNode[] };
-  userPermissions?: { canMerge: boolean };
+  userPermissions?: { canMerge: boolean; updateMergeRequest: boolean };
   approvedBy?: { nodes: { username: string }[] };
 }
 
@@ -524,7 +526,9 @@ export function gqlNodeToMergeRequest(node: GqlMRListNode, currentUsername?: str
     target_branch: node.targetBranch,
     merge_commit_sha: "",
     sha: "",
-    milestone: node.milestone ? { id: 0, title: node.milestone.title } : undefined,
+    milestone: node.milestone
+      ? { id: getIdFromGqlId(node.milestone.id), title: node.milestone.title }
+      : undefined,
     draft: false,
     has_conflicts: node.conflicts === true,
     force_remove_source_branch: node.forceRemoveSourceBranch ?? undefined,
@@ -538,6 +542,7 @@ export function gqlNodeToMergeRequest(node: GqlMRListNode, currentUsername?: str
       node.userPermissions || approvedByCurrentUser !== undefined
         ? {
             can_merge: node.userPermissions?.canMerge === true,
+            can_update: node.userPermissions?.updateMergeRequest === true,
             approved: approvedByCurrentUser === true,
           }
         : undefined,
