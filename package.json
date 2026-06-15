@@ -104,7 +104,7 @@
     },
     {
       "name": "project_view",
-      "title": "Project",
+      "title": "Show Project",
       "subtitle": "GitLab",
       "description": "Open GitLab Project",
       "mode": "view",
