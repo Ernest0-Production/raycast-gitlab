@@ -167,10 +167,9 @@ function gqlPositionToPosition(position?: GqlDiscussionNoteNode["position"]): MR
   if (!filePath) {
     return undefined;
   }
-  const line = position.newLine ?? position.oldLine ?? undefined;
   return {
     file_path: filePath,
-    line,
+    line: position.newLine ?? position.oldLine ?? undefined,
     line_type: position.newLine ? "new" : position.oldLine ? "old" : undefined,
     head_sha: position.diffRefs?.headSha ?? undefined,
     start_sha: position.diffRefs?.startSha ?? undefined,
