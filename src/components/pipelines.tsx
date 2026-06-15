@@ -1,5 +1,5 @@
 import { Action, ActionPanel, List, Icon, Color } from "@raycast/api";
-import { copyShortcut, formatDate, formatDateTime } from "../utils";
+import { copyShortcut, formatDate, formatDateTime, formatDuration, formatDurationHuman } from "../utils";
 import { getCIJobStatusIcon, getMRPipelineStatusTooltip, JobList } from "./jobs";
 import {
   CancelPipelineAction,
@@ -22,8 +22,7 @@ export function PipelineListItem(props: {
   navigationTitle?: string;
   mrIID?: number;
 }) {
-  const finishedAt =
-    props.pipeline.finished_at || (props.pipeline as { finishedAt?: string }).finishedAt;
+  const finishedAt = props.pipeline.finished_at || (props.pipeline as { finishedAt?: string }).finishedAt;
   const startedAt = props.pipeline.started_at || (props.pipeline as { startedAt?: string }).startedAt;
   const createdAt = props.pipeline.created_at || (props.pipeline as { createdAt?: string }).createdAt;
   const iso = finishedAt ?? startedAt ?? createdAt;
@@ -43,20 +42,24 @@ export function PipelineListItem(props: {
         tooltip: props.pipeline.status ? getMRPipelineStatusTooltip(props.pipeline.status) : "",
       }}
       subtitle={props.pipeline.commit_title || props.pipeline.ref}
-      accessories={
-        iso
+      accessories={[
+        ...(iso
           ? [
               {
+                icon: Icon.Calendar,
                 text: formatDate(new Date(iso)),
                 tooltip: finishedAt
-                  ? `Finished ${formatDateTime(new Date(iso))}${finishedAt && props.pipeline.duration ? ` · ${props.pipeline.duration}s` : ""}`
+                  ? `Finished ${formatDateTime(new Date(iso))}`
                   : startedAt
                     ? `Started ${formatDateTime(new Date(iso))}`
                     : `Created ${formatDateTime(new Date(iso))}`,
               },
             ]
-          : []
-      }
+          : []),
+        ...(props.pipeline.duration > 0
+          ? [{ icon: Icon.Clock, text: formatDuration(props.pipeline.duration), tooltip: formatDurationHuman(props.pipeline.duration) }]
+          : []),
+      ]}
       actions={
         <ActionPanel>
           <ActionPanel.Section title={`#${props.pipeline.iid}`}>
