@@ -5,6 +5,7 @@ import path from "path";
 import { getArtifactDownloadDirectoryPreference, gitlab } from "../common";
 import { getIdFromGqlId } from "../utils";
 import { Job, JobArtifact } from "./jobs";
+import { JobLogView } from "./job_log";
 import { showFailureToast } from "@raycast/utils";
 
 function jobNumericId(job: Job): string {
@@ -102,6 +103,17 @@ export function RetryJobAction(props: { job: Job }) {
       icon={{ source: Icon.Repeat, tintColor: Color.PrimaryText }}
       shortcut={{ modifiers: ["cmd"], key: "r" }}
       onAction={handle}
+    />
+  );
+}
+
+export function ShowJobLogAction(props: { job: Job; projectFullPath: string }) {
+  return (
+    <Action.Push
+      title="Show Log"
+      icon={{ source: Icon.Terminal, tintColor: Color.PrimaryText }}
+      shortcut={{ modifiers: ["cmd"], key: "l" }}
+      target={<JobLogView job={props.job} projectFullPath={props.projectFullPath} />}
     />
   );
 }

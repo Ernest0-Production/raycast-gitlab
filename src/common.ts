@@ -1,18 +1,34 @@
-import { ApolloClient, ApolloLink, HttpLink, InMemoryCache, NormalizedCacheObject } from "@apollo/client";
+import { ApolloClient, ApolloLink, fromPromise, HttpLink, InMemoryCache, NormalizedCacheObject } from "@apollo/client";
+import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import fetch from "node-fetch";
 
 import os from "os";
 import path from "path";
 import { getHttpAgent, GitLab } from "./gitlabapi";
-import { getPreferences, parseCommaSeparatedPreference } from "./utils";
+import { authorize, refreshToken } from "./oauth";
+import {
+  getInstance,
+  getPreferences,
+  isOAuthEnabled,
+  parseCommaSeparatedPreference,
+  requirePersonalAccessToken,
+} from "./utils";
 
 let gitlabClient: GitLab | undefined;
 
+export async function resolveToken(): Promise<string> {
+  if (isOAuthEnabled()) return authorize();
+  return requirePersonalAccessToken();
+}
+
 function createGitLabClient(): GitLab {
-  const preferences = getPreferences();
-  const instance = preferences.instance || "https://gitlab.com";
-  return new GitLab(instance, preferences.token);
+  return new GitLab(
+    getInstance(),
+    isOAuthEnabled()
+      ? { authType: "oauth", resolve: resolveToken, refresh: refreshToken }
+      : { authType: "pat", resolve: resolveToken },
+  );
 }
 
 function getGitLabClient(): GitLab {
@@ -35,27 +51,24 @@ class GitLabGQL {
 }
 
 function createGitLabGQLClient(): GitLabGQL {
-  const preferences = getPreferences();
-  const instance = preferences.instance || "https://gitlab.com";
-  const token = preferences.token;
-  const graphqlEndpoint = `${instance}/api/graphql`;
+  const instance = getInstance();
   const httpLink = new HttpLink({
-    uri: graphqlEndpoint,
+    uri: `${instance}/api/graphql`,
     fetch: fetch as unknown as typeof globalThis.fetch,
     fetchOptions: { agent: getHttpAgent() },
   });
 
-  const authMiddleware = new ApolloLink((operation, forward) => {
-    operation.setContext(({ headers = {} }) => ({
+  const authLink = setContext(async (_, prevContext) => {
+    const token = await resolveToken();
+    return {
       headers: {
-        ...headers,
+        ...(prevContext.headers ?? {}),
         authorization: token ? `Bearer ${token}` : "",
       },
-    }));
-    return forward(operation);
+    };
   });
 
-  const errorLink = onError(({ graphQLErrors, networkError }) => {
+  const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) => {
     if (graphQLErrors) {
       for (const error of graphQLErrors) {
         console.warn(`GitLab GraphQL: ${error.message}`);
@@ -64,11 +77,15 @@ function createGitLabGQLClient(): GitLabGQL {
     if (networkError) {
       const statusCode = "statusCode" in networkError ? networkError.statusCode : undefined;
       console.warn(`GitLab GraphQL network error${statusCode ? ` ${statusCode}` : ""}: ${networkError.message}`);
+      if (statusCode === 401 && isOAuthEnabled() && !operation.getContext().gitlabAuthRetried && forward) {
+        operation.setContext({ gitlabAuthRetried: true });
+        return fromPromise(refreshToken()).flatMap(() => forward(operation));
+      }
     }
   });
 
   const client = new ApolloClient({
-    link: ApolloLink.from([authMiddleware, errorLink, httpLink]),
+    link: ApolloLink.from([errorLink, authLink, httpLink]),
     cache: new InMemoryCache(),
     defaultOptions: {
       query: {

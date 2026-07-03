@@ -55,6 +55,7 @@ export function ReviewList() {
 export function useMyReviews(
   project?: Project | undefined,
   labels: string[] | undefined = undefined,
+  hideArchived = false,
 ): {
   mrs: MergeRequest[];
   isLoading: boolean;
@@ -69,11 +70,12 @@ export function useMyReviews(
     performRefetch,
     pagination,
   } = usePaginatedMergeRequests({
-    cacheKey: `reviews_${project?.id ?? "all"}_${labels ? labels.join(",") : "[]"}`,
+    cacheKey: `reviews_${project?.id ?? "all"}_${labels ? labels.join(",") : "[]"}_${hideArchived}`,
     buildParams: () => ({
       state: MRState.opened,
       scope: MRScope.reviews_for_me,
       ...(labels && { labels }),
+      ...(hideArchived && { non_archived: true }),
     }),
   });
   const mrs = useMemo(

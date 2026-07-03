@@ -9,6 +9,7 @@ import {
   RefreshJobsAction,
   RetryJobAction,
   RunJobAction,
+  ShowJobLogAction,
 } from "./job_actions";
 import { GitLabOpenInBrowserAction } from "./actions";
 import { fetchLatestPipelineIidByCommitShaGql } from "./pipelines_gql";
@@ -203,6 +204,7 @@ export function JobListItem(props: { job: Job; projectFullPath: string; onRefres
           <ActionPanel.Section>
             <GitLabOpenInBrowserAction url={jobUrl} />
             <Action.CopyToClipboard title="Copy URL" content={jobUrl} shortcut={copyShortcut} />
+            <ShowJobLogAction job={props.job} projectFullPath={props.projectFullPath} />
             <RetryJobAction job={props.job} />
             {isManualJob(props.job) && <RunJobAction job={props.job} onRefreshJobs={props.onRefreshJobs} />}
             {isCancelableJob(props.job) && <CancelJobAction job={props.job} onRefreshJobs={props.onRefreshJobs} />}

@@ -8,6 +8,7 @@ import {
   PipelineItemActions,
   RetryPipelineAction,
   RunPipelineAction,
+  TriggerPipelineAction,
 } from "./pipeline_actions";
 import { GitLabOpenInBrowserAction } from "./actions";
 import { Pipeline } from "../gitlabapi";
@@ -114,12 +115,19 @@ export function PipelineList(props: { projectFullPath: string; navigationTitle?:
         <ActionPanel>
           <ActionPanel.Section>
             {pipelines[0] && (
-              <RunPipelineAction
-                projectId={pipelines[0].projectId}
-                ref={pipelines[0].ref}
-                onFinished={performRefetch}
-                shortcut={{ modifiers: ["cmd"], key: "n" }}
-              />
+              <>
+                <RunPipelineAction
+                  projectId={pipelines[0].projectId}
+                  ref={pipelines[0].ref}
+                  onFinished={performRefetch}
+                  shortcut={{ modifiers: ["cmd"], key: "n" }}
+                />
+                <TriggerPipelineAction
+                  projectId={pipelines[0].projectId}
+                  defaultRef={pipelines[0].ref}
+                  shortcut={{ modifiers: ["cmd", "shift"], key: "t" }}
+                />
+              </>
             )}
           </ActionPanel.Section>
         </ActionPanel>

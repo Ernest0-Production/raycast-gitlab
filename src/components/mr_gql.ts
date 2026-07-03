@@ -217,6 +217,7 @@ const CURRENT_USER_ASSIGNED_MERGE_REQUESTS = gql`
     $sourceBranches: [String!]
     $draft: Boolean
     $not: MergeRequestsResolverNegatedParams
+    $includeArchived: Boolean
   ) {
     currentUser {
       assignedMergeRequests(
@@ -232,6 +233,7 @@ const CURRENT_USER_ASSIGNED_MERGE_REQUESTS = gql`
         sourceBranches: $sourceBranches
         draft: $draft
         not: $not
+        includeArchived: $includeArchived
       ) {
         nodes {
           ...MergeRequestListFields
@@ -260,6 +262,7 @@ const CURRENT_USER_AUTHORED_MERGE_REQUESTS = gql`
     $sourceBranches: [String!]
     $draft: Boolean
     $not: MergeRequestsResolverNegatedParams
+    $includeArchived: Boolean
   ) {
     currentUser {
       authoredMergeRequests(
@@ -275,6 +278,7 @@ const CURRENT_USER_AUTHORED_MERGE_REQUESTS = gql`
         sourceBranches: $sourceBranches
         draft: $draft
         not: $not
+        includeArchived: $includeArchived
       ) {
         nodes {
           ...MergeRequestListFields
@@ -303,6 +307,7 @@ const CURRENT_USER_REVIEW_MERGE_REQUESTS = gql`
     $sourceBranches: [String!]
     $draft: Boolean
     $not: MergeRequestsResolverNegatedParams
+    $includeArchived: Boolean
   ) {
     currentUser {
       reviewRequestedMergeRequests(
@@ -318,6 +323,7 @@ const CURRENT_USER_REVIEW_MERGE_REQUESTS = gql`
         sourceBranches: $sourceBranches
         draft: $draft
         not: $not
+        includeArchived: $includeArchived
       ) {
         nodes {
           ...MergeRequestListFields
@@ -417,6 +423,7 @@ export interface MRListGqlFilters {
   sourceBranches?: string[];
   draft?: boolean;
   not?: Record<string, unknown>;
+  includeArchived?: boolean;
 }
 
 type MergeRequestState = "opened" | "closed" | "merged" | "locked" | "all";
@@ -694,6 +701,10 @@ export function buildMRListGqlFilters(
     filters.not = mergeNotFilter(filters.not, "reviewerUsername", notReviewer[0]);
   }
 
+  if (params.non_archived === true) {
+    filters.includeArchived = false;
+  }
+
   if (currentUsername && scope !== MRScope.all) {
     switch (scope) {
       case MRScope.created_by_me:
@@ -790,6 +801,13 @@ async function queryMergeRequestConnection(
     draft: variables.draft,
     not: variables.not,
   };
+
+  if (
+    variables.includeArchived !== undefined &&
+    (source.kind === "assigned" || source.kind === "authored" || source.kind === "review")
+  ) {
+    gqlVariables.includeArchived = variables.includeArchived;
+  }
 
   if (source.kind === "project" || source.kind === "group") {
     gqlVariables.fullPath = source.fullPath;

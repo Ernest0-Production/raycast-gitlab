@@ -284,7 +284,9 @@ export function formatDurationHuman(totalSeconds: number): string {
 
 export interface Preferences {
   instance: string;
+  authType?: "pat" | "oauth";
   token: string;
+  oauthClientId?: string;
   artifactDownloadDirectory?: string;
   primaryaction: "browser" | "detail";
   poptoroot: boolean;
@@ -305,10 +307,47 @@ export interface Preferences {
   reviewLabels?: string;
   includeLabels?: string;
   excludeLabels?: string;
+  hideArchived?: boolean;
 }
 
 export function getPreferences(): Preferences {
   return getPreferenceValues<Preferences>();
+}
+
+const DEFAULT_GITLAB_INSTANCE = "https://gitlab.com";
+
+// OAuth scopes requested during the PKCE flow. Not user-configurable: the
+// OAuth application's scope checkboxes are the real security gate, and a
+// textfield for scopes mostly produces typos and cryptic `invalid_scope`
+// errors. The application must be registered with at least these scopes.
+export const OAUTH_SCOPES = ["api", "read_user", "read_repository"] as const;
+
+export function getInstance(preferences: Preferences = getPreferences()): string {
+  return (preferences.instance.trim() || DEFAULT_GITLAB_INSTANCE).replace(/\/+$/, "");
+}
+
+export function isOAuthEnabled(preferences: Preferences = getPreferences()): boolean {
+  return preferences.authType === "oauth";
+}
+
+export function requireOAuthClientId(preferences: Preferences = getPreferences()): string {
+  const clientId = preferences.oauthClientId?.trim();
+  if (!clientId) {
+    throw new Error(
+      "GitLab OAuth Application ID is not configured. Open the GitLab extension preferences and either set the Application ID or switch Authentication back to Personal Access Token.",
+    );
+  }
+  return clientId;
+}
+
+export function requirePersonalAccessToken(preferences: Preferences = getPreferences()): string {
+  const token = preferences.token?.trim();
+  if (!token) {
+    throw new Error(
+      "GitLab API Token is not configured. Open the GitLab extension preferences and either set the API Token or switch Authentication to OAuth.",
+    );
+  }
+  return token;
 }
 
 export function parseCommaSeparatedPreference(value: string | undefined): string[] {

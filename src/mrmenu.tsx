@@ -236,17 +236,29 @@ function useMenuMergeRequests(): {
     mrs: mrsAssigned,
     isLoading: isLoadingAssigned,
     error: errorAssigned,
-  } = useMyMergeRequests(MRScope.assigned_to_me, MRState.opened, undefined, assignedLabelsFilter);
+  } = useMyMergeRequests(
+    MRScope.assigned_to_me,
+    MRState.opened,
+    undefined,
+    assignedLabelsFilter,
+    preferences.hideArchived === true,
+  );
   const {
     mrs: mrsReview,
     isLoading: isLoadingReview,
     error: errorReview,
-  } = useMyReviews(undefined, reviewLabelsFilter);
+  } = useMyReviews(undefined, reviewLabelsFilter, preferences.hideArchived === true);
   const {
     mrs: mrsCreated,
     isLoading: isLoadingCreated,
     error: errorCreated,
-  } = useMyMergeRequests(MRScope.created_by_me, MRState.opened, undefined, createdLabelsFilter);
+  } = useMyMergeRequests(
+    MRScope.created_by_me,
+    MRState.opened,
+    undefined,
+    createdLabelsFilter,
+    preferences.hideArchived === true,
+  );
   const isLoading = isLoadingAssigned || isLoadingReview || isLoadingCreated;
 
   return {

@@ -38,6 +38,7 @@ export default function MenuCommand() {
       preferences.includeLabels && preferences.includeLabels.trim().length > 0 ? preferences.includeLabels : undefined,
     excludeLabels:
       preferences.excludeLabels && preferences.excludeLabels.trim().length > 0 ? preferences.excludeLabels : undefined,
+    ...(preferences.hideArchived === true && { non_archived: true }),
   });
 
   return (

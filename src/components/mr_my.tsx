@@ -106,6 +106,7 @@ export function useMyMergeRequests(
   state: MRState,
   project: Project | undefined,
   labels: string[] | undefined = undefined,
+  hideArchived = false,
 ): {
   mrs: MergeRequest[];
   isLoading: boolean;
@@ -116,7 +117,12 @@ export function useMyMergeRequests(
   // `project` is intentionally excluded from the cache key; the project filter is
   // applied client-side in `MyMergeRequests` against the (global) fetched pages.
   return usePaginatedMergeRequests({
-    cacheKey: `mymrs_${scope}_${state}_${labels ? labels.join(",") : "[]"}`,
-    buildParams: () => ({ state, scope, ...(labels && { labels }) }),
+    cacheKey: `mymrs_${scope}_${state}_${labels ? labels.join(",") : "[]"}_${hideArchived}`,
+    buildParams: () => ({
+      state,
+      scope,
+      ...(labels && { labels }),
+      ...(hideArchived && { non_archived: true }),
+    }),
   });
 }

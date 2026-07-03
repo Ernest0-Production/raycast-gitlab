@@ -3,6 +3,7 @@ import React from "react";
 import { gitlab } from "../common";
 import { Pipeline } from "../gitlabapi";
 import { showFailureToast } from "@raycast/utils";
+import { PipelineTriggerForm } from "./pipeline_trigger_form";
 
 export function RefreshPipelinesAction(props: {
   onRefreshPipelines?: () => void;
@@ -137,6 +138,25 @@ export function RunPipelineAction(props: {
   );
 }
 
+export function TriggerPipelineAction(props: {
+  projectId: string | number;
+  defaultRef?: string;
+  shortcut?: Keyboard.Shortcut;
+}): React.ReactElement | null {
+  const projectId = Number(props.projectId);
+  if (!projectId) {
+    return null;
+  }
+  return (
+    <Action.Push
+      title="Trigger New Pipeline"
+      icon={{ source: Icon.Play, tintColor: Color.Green }}
+      shortcut={props.shortcut ?? { modifiers: ["cmd", "shift"], key: "t" }}
+      target={<PipelineTriggerForm projectId={projectId} defaultRef={props.defaultRef} />}
+    />
+  );
+}
+
 export function PipelineItemActions(props: {
   pipeline: Pipeline;
   onRefreshPipelines?: () => void;
@@ -152,6 +172,13 @@ export function PipelineItemActions(props: {
         onFinished={props.onRefreshPipelines ?? props.onDataChange}
         shortcut={{ modifiers: ["cmd"], key: "n" }}
       />
+      {!props.mrIID && (
+        <TriggerPipelineAction
+          projectId={props.pipeline.projectId}
+          defaultRef={props.pipeline.ref}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "t" }}
+        />
+      )}
       <RefreshPipelinesAction
         pipeline={props.pipeline}
         onRefreshPipelines={props.onRefreshPipelines ?? props.onDataChange}
