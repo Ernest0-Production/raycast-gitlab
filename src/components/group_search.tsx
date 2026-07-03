@@ -32,7 +32,7 @@ export function useSearch(query: string | undefined): {
 } {
   const { data, isLoading } = usePromise(
     (searchQuery: string) => gitlab.getGroups({ searchText: searchQuery, searchIn: "title" }),
-    [query ?? ""]
+    [query ?? ""],
   );
   return { groups: data, isLoading };
 }

@@ -29,8 +29,6 @@ export function useTodos(
     [],
     { initialData: [] },
   );
-  const todos = project
-    ? data.filter((todo) => todo.project_with_namespace === project.name_with_namespace)
-    : data;
+  const todos = project ? data.filter((todo) => todo.project_with_namespace === project.name_with_namespace) : data;
   return { todos, isLoading, error: error ? getErrorMessage(error) : undefined, performRefetch: revalidate };
 }

@@ -31,10 +31,7 @@ function EventCommitListItem(props: { event: Event; onRefresh?: () => void }) {
                 title="Open Pipeline"
                 icon={{ source: GitLabIcons.ci, tintColor: Color.PrimaryText }}
                 target={
-                  <PipelineJobsListByCommit
-                    project={props.event.project}
-                    sha={props.event.push_data.commit_to}
-                  />
+                  <PipelineJobsListByCommit project={props.event.project} sha={props.event.push_data.commit_to} />
                 }
               />
             )}
@@ -81,7 +78,8 @@ export function MRCommitList(props: {
   const { commits, isLoading, pagination } = usePaginatedMergeRequestCommits({
     cacheKey: `mr_commits_${props.projectID}_${props.mrIID}`,
     projectID: props.projectID,
-    mrIID: props.mrIID });
+    mrIID: props.mrIID,
+  });
 
   return (
     <List

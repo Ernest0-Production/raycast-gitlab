@@ -1300,10 +1300,13 @@ export class GitLab {
 
 const REST_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
 
-const getMyselfCached = withCache(async (gitlab: GitLab): Promise<User> => {
-  const userdata = await gitlab.fetch("user");
-  return userFromJson(userdata);
-}, { maxAge: REST_CACHE_MAX_AGE_MS });
+const getMyselfCached = withCache(
+  async (gitlab: GitLab): Promise<User> => {
+    const userdata = await gitlab.fetch("user");
+    return userFromJson(userdata);
+  },
+  { maxAge: REST_CACHE_MAX_AGE_MS },
+);
 
 const fetchUserGroupsCached = withCache(
   async (gitlab: GitLab, params: Record<string, string>): Promise<Group[]> => {

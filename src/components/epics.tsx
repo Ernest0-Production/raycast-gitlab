@@ -42,31 +42,35 @@ export function EpicListItem(props: {
             props.displayGroup === true && props.epic.references?.full
               ? (() => {
                   const ampersandIndex = props.epic.references!.full!.lastIndexOf("&");
-                  return ampersandIndex > 0
-                    ? props.epic.references!.full!.substring(0, ampersandIndex)
-                    : undefined;
+                  return ampersandIndex > 0 ? props.epic.references!.full!.substring(0, ampersandIndex) : undefined;
                 })()
-              : undefined },
+              : undefined,
+        },
         {
           text: props.epic.upvotes ? `${props.epic.upvotes}` : undefined,
           icon: props.epic.upvotes ? "👍" : undefined,
-          tooltip: props.epic.upvotes ? `Upvotes: ${props.epic.upvotes}` : undefined },
+          tooltip: props.epic.upvotes ? `Upvotes: ${props.epic.upvotes}` : undefined,
+        },
         {
           text: props.epic.downvotes ? `${props.epic.downvotes}` : undefined,
           icon: props.epic.downvotes ? "👎" : undefined,
-          tooltip: props.epic.downvotes ? `Downvotes: ${props.epic.downvotes}` : undefined },
+          tooltip: props.epic.downvotes ? `Downvotes: ${props.epic.downvotes}` : undefined,
+        },
         ...(props.epic.updated_at
           ? [{ date: new Date(props.epic.updated_at), tooltip: `Updated: ${formatDateTime(props.epic.updated_at)}` }]
           : []),
         {
           icon: props.epic.author ? { source: props.epic.author.avatar_url || "", mask: Image.Mask.Circle } : undefined,
-          tooltip: props.epic.author?.name },
+          tooltip: props.epic.author?.name,
+        },
       ]}
       icon={{
         value: {
           source: GitLabIcons.epic,
-          tintColor: props.epic.state == "opened" ? Color.Green : Color.Purple },
-        tooltip: props.epic.state ? `Status: ${capitalizeFirstLetter(props.epic.state)}` : "" }}
+          tintColor: props.epic.state == "opened" ? Color.Green : Color.Purple,
+        },
+        tooltip: props.epic.state ? `Status: ${capitalizeFirstLetter(props.epic.state)}` : "",
+      }}
       actions={
         <ActionPanel>
           <ActionPanel.Section>
@@ -102,10 +106,7 @@ export function EpicList(props: { group: Group }) {
       throttle={true}
       navigationTitle={`Epics ${props.group.full_path}`}
     >
-      <List.Section
-        title={`Recent Epics ${epics.length}`}
-        subtitle={`${epics.length}`}
-      >
+      <List.Section title={`Recent Epics ${epics.length}`} subtitle={`${epics.length}`}>
         {epics.map((epic) => (
           <EpicListItem key={epic.id} epic={epic} />
         ))}

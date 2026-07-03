@@ -100,7 +100,8 @@ export function GroupList(props: { parentGroup?: Group }) {
   const topLevelOnly = !getPreferences().flatlist;
   const { groupsinfo, isLoading } = useMyGroups({
     parentGroupID: props.parentGroup ? props.parentGroup.id : 0,
-    top_level_only: topLevelOnly });
+    top_level_only: topLevelOnly,
+  });
 
   return (
     <List
@@ -151,9 +152,11 @@ export function useMyGroups(args?: { query?: string; parentGroupID?: number; top
             ? (
                 ((await gitlab.fetch(`groups/${parentID}/projects`, {
                   search: args?.query || "",
-                  min_access_level: "30" })) || []) as Parameters<typeof dataToProject>[0][]
+                  min_access_level: "30",
+                })) || []) as Parameters<typeof dataToProject>[0][]
               ).map((raw) => dataToProject(raw))
-            : [] };
+            : [],
+      };
     },
     [args?.parentGroupID, topLevelOnly],
     { initialData: emptyGroupInfo },

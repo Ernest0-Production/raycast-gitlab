@@ -1,15 +1,4 @@
-import {
-  Action,
-  ActionPanel,
-  Alert,
-  Color,
-  confirmAlert,
-  Icon,
-  Image,
-  Keyboard,
-  showToast,
-  Toast,
-} from "@raycast/api";
+import { Action, ActionPanel, Alert, Color, confirmAlert, Icon, Image, Keyboard, showToast, Toast } from "@raycast/api";
 import React from "react";
 import { gitlab } from "../common";
 import { MergeRequest } from "../gitlabapi";
@@ -163,9 +152,7 @@ export function ApproveMRAction(props: { mr: MergeRequest; finished?: () => void
     <Action
       title={approved ? "Revoke Approval" : "Approve"}
       icon={
-        approved
-          ? { source: Icon.Xmark, tintColor: Color.Red }
-          : { source: Icon.Checkmark, tintColor: Color.Green }
+        approved ? { source: Icon.Xmark, tintColor: Color.Red } : { source: Icon.Checkmark, tintColor: Color.Green }
       }
       onAction={handleAction}
     />

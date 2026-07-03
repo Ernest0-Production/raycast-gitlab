@@ -187,7 +187,7 @@ function MRDiscussionListItem(props: {
             <GitLabOpenInBrowserAction url={firstNote?.web_url || props.mr.web_url} />
             {props.discussion.resolvable && (
               <Action
-                title={isResolved ? "Reopen thread" : "Resolve thread"}
+                title={isResolved ? "Reopen Thread" : "Resolve Thread"}
                 icon={{
                   source: isResolved ? Icon.RotateAntiClockwise : Icon.Checkmark,
                   tintColor: isResolved ? Color.Red : Color.Green,

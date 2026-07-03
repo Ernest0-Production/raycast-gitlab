@@ -38,11 +38,7 @@ export function MergeRequestScopeSubmenu(props: { scope: MRScope; onSelect: (sco
       icon={props.scope === MRScope.all ? Icon.Person : mrScopeIcon(props.scope, false)}
     >
       <ActionPanel.Section>
-        <Action
-          title="All"
-          autoFocus={props.scope === MRScope.all}
-          onAction={() => props.onSelect(MRScope.all)}
-        />
+        <Action title="All" autoFocus={props.scope === MRScope.all} onAction={() => props.onSelect(MRScope.all)} />
         {MR_SCOPE_FILTERS.map(({ value, title }) => (
           <Action
             key={value}

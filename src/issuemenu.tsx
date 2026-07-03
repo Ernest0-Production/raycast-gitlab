@@ -13,7 +13,7 @@ import { MenuBarItem, MenuBarItemConfigureCommand, MenuBarRoot, MenuBarSection }
 import { useMyIssues } from "./components/issues_my";
 import { IssueScope, IssueState } from "./components/issues";
 import { GitLabIcons } from "./icons";
-import { getBoundedPreferenceNumber,  getPreferences } from "./utils";
+import { getBoundedPreferenceNumber, getPreferences } from "./utils";
 import { showFailureToast } from "@raycast/utils";
 
 async function launchMyIssues(): Promise<void> {
@@ -35,24 +35,15 @@ export default function MenuCommand() {
 
   const { issues, isLoading, error } = useMyIssues(IssueScope.assigned_to_me, IssueState.opened, {
     includeLabels:
-      preferences.includeLabels && preferences.includeLabels.trim().length > 0
-        ? preferences.includeLabels
-        : undefined,
+      preferences.includeLabels && preferences.includeLabels.trim().length > 0 ? preferences.includeLabels : undefined,
     excludeLabels:
-      preferences.excludeLabels && preferences.excludeLabels.trim().length > 0
-        ? preferences.excludeLabels
-        : undefined });
+      preferences.excludeLabels && preferences.excludeLabels.trim().length > 0 ? preferences.excludeLabels : undefined,
+  });
 
   return (
     <MenuBarRoot
       isLoading={isLoading}
-      title={
-        preferences.showtext
-          ? issues.length <= 0
-            ? undefined
-            : `${issues.length}`
-          : undefined
-      }
+      title={preferences.showtext ? (issues.length <= 0 ? undefined : `${issues.length}`) : undefined}
       icon={{ source: "issues.svg", tintColor: Color.PrimaryText }}
       tooltip="GitLab Issues"
       error={error}
@@ -75,7 +66,8 @@ export default function MenuCommand() {
               key={issue.iid}
               icon={{
                 source: GitLabIcons.issue,
-                tintColor: { light: "#000", dark: "#FFF", adjustContrast: false } }}
+                tintColor: { light: "#000", dark: "#FFF", adjustContrast: false },
+              }}
               title={`#${issue.iid} ${issue.title}`}
               tooltip={issue.reference_full}
               onAction={() => open(issue.web_url)}

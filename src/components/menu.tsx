@@ -48,13 +48,7 @@ export function MenuBarItem(props: {
 }) {
   return (
     <MenuBarExtra.Item
-      title={
-        props.title
-          ? props.title.length > 100
-            ? props.title.slice(0, 100) + " ..."
-            : props.title
-          : "?"
-      }
+      title={props.title ? (props.title.length > 100 ? props.title.slice(0, 100) + " ..." : props.title) : "?"}
       icon={props.icon}
       subtitle={props.subtitle}
       shortcut={props.shortcut}
@@ -140,4 +134,3 @@ export function MenuBarItemConfigureCommand() {
     />
   );
 }
-

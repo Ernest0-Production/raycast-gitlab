@@ -43,7 +43,7 @@ export function useSearch(query: string | undefined): {
 } {
   const { data, isLoading } = usePromise(
     (searchQuery: string) => gitlab.getUsers({ searchText: searchQuery, searchIn: "title" }),
-    [query ?? ""]
+    [query ?? ""],
   );
   return { users: data, isLoading };
 }

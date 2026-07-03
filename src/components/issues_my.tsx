@@ -73,12 +73,9 @@ export function useMyIssues(
     data: issues,
     isLoading,
     error,
-    revalidate } = useCachedPromise(
-    async (
-      scope: IssueScope,
-      state: IssueState,
-      params: Record<string, any> | undefined,
-    ): Promise<Issue[]> => {
+    revalidate,
+  } = useCachedPromise(
+    async (scope: IssueScope, state: IssueState, params: Record<string, any> | undefined): Promise<Issue[]> => {
       const apiParams = { state, scope, ...(params || {}) };
       return gitlab.getIssues(apiParams, undefined, scope === IssueScope.assigned_to_me && state === IssueState.opened);
     },

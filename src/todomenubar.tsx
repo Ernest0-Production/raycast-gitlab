@@ -3,7 +3,7 @@ import { gitlab } from "./common";
 import { getTodoIcon, getPrettyTodoActionName } from "./components/todo";
 import { useTodos } from "./components/todo/utils";
 import { MenuBarItem, MenuBarItemConfigureCommand, MenuBarRoot, MenuBarSection } from "./components/menu";
-import { getBoundedPreferenceNumber,  getPreferences } from "./utils";
+import { getBoundedPreferenceNumber, getPreferences } from "./utils";
 import { showFailureToast } from "@raycast/utils";
 
 async function launchTodosCommand() {

@@ -25,11 +25,7 @@ function MergeRequestStatusSubmenu(props: { state: MRState; onSelect: (state: MR
       }
     >
       <ActionPanel.Section>
-        <Action
-          title="All"
-          autoFocus={props.state === MRState.all}
-          onAction={() => props.onSelect(MRState.all)}
-        />
+        <Action title="All" autoFocus={props.state === MRState.all} onAction={() => props.onSelect(MRState.all)} />
         {MR_STATE_FILTERS.map(({ state, title }) => (
           <Action
             key={state}

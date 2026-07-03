@@ -1,6 +1,6 @@
 import { Action, ActionPanel, List, Icon, Color } from "@raycast/api";
 import { useMemo } from "react";
-import { copyShortcut, formatDate, formatDateTime, formatDurationHuman } from "../utils";
+import { copyShortcut, formatDate, formatDateTime } from "../utils";
 import { getCIJobStatusIcon, getMRPipelineStatusTooltip, JobList } from "./jobs";
 import {
   CancelPipelineAction,

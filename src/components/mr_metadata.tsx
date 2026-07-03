@@ -188,13 +188,7 @@ export function MRDetailMetadata(props: { mr: MergeRequest; discussionLabel?: st
       <Detail.Metadata.TagList title="Status">
         <Detail.Metadata.TagList.Item
           text={capitalizeFirstLetter(props.mr.state)}
-          color={
-            props.mr.state === "closed"
-              ? Color.Red
-              : props.mr.state === "merged"
-                ? Color.Purple
-                : Color.Green
-          }
+          color={props.mr.state === "closed" ? Color.Red : props.mr.state === "merged" ? Color.Purple : Color.Green}
           icon={(getMRStateListIcon(props.mr.state) as { value: Image.ImageLike }).value}
         />
       </Detail.Metadata.TagList>
@@ -239,9 +233,7 @@ export function MRListDetailMetadata(props: { mr: MergeRequest; discussionLabel?
           ))}
         </List.Item.Detail.Metadata.TagList>
       )}
-      {props.mr.milestone && (
-        <List.Item.Detail.Metadata.Label title="Milestone" text={props.mr.milestone.title} />
-      )}
+      {props.mr.milestone && <List.Item.Detail.Metadata.Label title="Milestone" text={props.mr.milestone.title} />}
       <List.Item.Detail.Metadata.Separator />
       <List.Item.Detail.Metadata.Label title="From" text={props.mr.source_branch} />
       <List.Item.Detail.Metadata.Label title="Into" text={props.mr.target_branch} />

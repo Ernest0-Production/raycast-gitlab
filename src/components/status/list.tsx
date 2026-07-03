@@ -16,7 +16,8 @@ import {
   StatusPresetMoveUpAction,
   StatusPresetSetAction,
   StatusPresetSetWithDurationAction,
-  StatusSetCustomAction } from "./actions";
+  StatusSetCustomAction,
+} from "./actions";
 
 export default function StatusList() {
   const { data, isLoading } = useCachedPromise(() => gitlab.getUserStatus(), []);

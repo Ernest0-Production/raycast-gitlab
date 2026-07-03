@@ -1,4 +1,15 @@
-import { Action, ActionPanel, closeMainWindow, Color, Icon, Keyboard, List, popToRoot, showToast, Toast } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  closeMainWindow,
+  Color,
+  Icon,
+  Keyboard,
+  List,
+  popToRoot,
+  showToast,
+  Toast,
+} from "@raycast/api";
 import * as open from "open";
 import React from "react";
 import { getGitLabGQL, getPrimaryActionPreference, PrimaryAction } from "../common";
@@ -164,11 +175,9 @@ export function CopyCloneUrlToClipboardAction(props: { shortcut?: Keyboard.Short
       icon={{ source: Icon.Link, tintColor: Color.PrimaryText }}
     >
       {props.project.http_url_to_repo && (
-        <Action.CopyToClipboard title="HTTPS" content={props.project.http_url_to_repo} />
+        <Action.CopyToClipboard title="Https" content={props.project.http_url_to_repo} />
       )}
-      {props.project.ssh_url_to_repo && (
-        <Action.CopyToClipboard title="SSH" content={props.project.ssh_url_to_repo} />
-      )}
+      {props.project.ssh_url_to_repo && <Action.CopyToClipboard title="Ssh" content={props.project.ssh_url_to_repo} />}
     </ActionPanel.Submenu>
   );
 }

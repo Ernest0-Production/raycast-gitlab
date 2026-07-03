@@ -526,9 +526,7 @@ export function gqlNodeToMergeRequest(node: GqlMRListNode, currentUsername?: str
     target_branch: node.targetBranch,
     merge_commit_sha: "",
     sha: "",
-    milestone: node.milestone
-      ? { id: getIdFromGqlId(node.milestone.id), title: node.milestone.title }
-      : undefined,
+    milestone: node.milestone ? { id: getIdFromGqlId(node.milestone.id), title: node.milestone.title } : undefined,
     draft: false,
     has_conflicts: node.conflicts === true,
     force_remove_source_branch: node.forceRemoveSourceBranch ?? undefined,

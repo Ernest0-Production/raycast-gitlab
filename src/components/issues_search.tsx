@@ -9,7 +9,8 @@ import {
   IssueScope,
   IssueState,
   getIssueQuery,
-  injectQueryNamedParameters } from "./issues";
+  injectQueryNamedParameters,
+} from "./issues";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -43,10 +44,7 @@ export function SearchMyIssues() {
         </List.Dropdown>
       }
     >
-      <List.Section
-        title={search ? "Search Results" : "Created Recently"}
-        subtitle={`${data.length}`}
-      >
+      <List.Section title={search ? "Search Results" : "Created Recently"} subtitle={`${data.length}`}>
         {data.map((issue) => (
           <IssueListItem key={issue.id} issue={issue} refreshData={revalidate} />
         ))}

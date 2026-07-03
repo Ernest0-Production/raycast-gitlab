@@ -48,8 +48,9 @@ export function useSearch(
         searchText: searchQuery,
         searchIn: "title",
         membership: projectScope === ProjectScope.membership ? "true" : "false",
-        active: isActive }),
-    [query ?? "", scope, active]
+        active: isActive,
+      }),
+    [query ?? "", scope, active],
   );
   return { projects: data, isLoading };
 }

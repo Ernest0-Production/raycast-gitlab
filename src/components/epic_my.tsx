@@ -39,7 +39,8 @@ export function MyEpicList(props: { scope: EpicScope; state: EpicState }) {
         scope,
         groupid: groupID === "" ? undefined : groupID,
         include_descendant_groups: true,
-        include_ancestor_groups: getPreferences().includeEpicAncestor });
+        include_ancestor_groups: getPreferences().includeEpicAncestor,
+      });
     },
     [props.scope, props.state, selectedGroupID],
     { initialData: [] },

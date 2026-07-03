@@ -36,7 +36,8 @@ async function launchCreatedMergeRequests(): Promise<void> {
     return launchCommand({
       name: "mr_my",
       type: LaunchType.UserInitiated,
-      arguments: { scope: MRScope.created_by_me } });
+      arguments: { scope: MRScope.created_by_me },
+    });
   } catch (error) {
     showFailureToast(error, { title: "Could not open My Merge Requests Command" });
   }
@@ -59,7 +60,8 @@ export default function MenuCommand() {
     error,
     assignedLabelsFilter,
     createdLabelsFilter,
-    reviewLabelsFilter } = useMenuMergeRequests();
+    reviewLabelsFilter,
+  } = useMenuMergeRequests();
   const assignedCount = mrsAssigned?.length || 0;
   const reviewCount = mrsReview?.length || 0;
   const createdCount = mrsCreated?.length || 0;
@@ -109,7 +111,8 @@ export default function MenuCommand() {
                 key={mergeRequest.id}
                 icon={{
                   source: GitLabIcons.merge_request,
-                  tintColor: { light: "#000", dark: "#FFF", adjustContrast: false } }}
+                  tintColor: { light: "#000", dark: "#FFF", adjustContrast: false },
+                }}
                 title={`!${mergeRequest.iid} ${mergeRequest.title}`}
                 tooltip={mergeRequest.reference_full}
                 onAction={() => open(mergeRequest.web_url)}
@@ -148,7 +151,8 @@ export default function MenuCommand() {
                 key={mergeRequest.id}
                 icon={{
                   source: GitLabIcons.merge_request,
-                  tintColor: { light: "#000", dark: "#FFF", adjustContrast: false } }}
+                  tintColor: { light: "#000", dark: "#FFF", adjustContrast: false },
+                }}
                 title={`!${mergeRequest.iid} ${mergeRequest.title}`}
                 tooltip={mergeRequest.reference_full}
                 onAction={() => open(mergeRequest.web_url)}
@@ -187,7 +191,8 @@ export default function MenuCommand() {
                 key={mergeRequest.id}
                 icon={{
                   source: GitLabIcons.merge_request,
-                  tintColor: { light: "#000", dark: "#FFF", adjustContrast: false } }}
+                  tintColor: { light: "#000", dark: "#FFF", adjustContrast: false },
+                }}
                 title={`!${mergeRequest.iid} ${mergeRequest.title}`}
                 tooltip={mergeRequest.reference_full}
                 onAction={() => open(mergeRequest.web_url)}
@@ -230,15 +235,18 @@ function useMenuMergeRequests(): {
   const {
     mrs: mrsAssigned,
     isLoading: isLoadingAssigned,
-    error: errorAssigned } = useMyMergeRequests(MRScope.assigned_to_me, MRState.opened, undefined, assignedLabelsFilter);
+    error: errorAssigned,
+  } = useMyMergeRequests(MRScope.assigned_to_me, MRState.opened, undefined, assignedLabelsFilter);
   const {
     mrs: mrsReview,
     isLoading: isLoadingReview,
-    error: errorReview } = useMyReviews(undefined, reviewLabelsFilter);
+    error: errorReview,
+  } = useMyReviews(undefined, reviewLabelsFilter);
   const {
     mrs: mrsCreated,
     isLoading: isLoadingCreated,
-    error: errorCreated } = useMyMergeRequests(MRScope.created_by_me, MRState.opened, undefined, createdLabelsFilter);
+    error: errorCreated,
+  } = useMyMergeRequests(MRScope.created_by_me, MRState.opened, undefined, createdLabelsFilter);
   const isLoading = isLoadingAssigned || isLoadingReview || isLoadingCreated;
 
   return {
@@ -249,5 +257,6 @@ function useMenuMergeRequests(): {
     mrsCreated,
     assignedLabelsFilter,
     createdLabelsFilter,
-    reviewLabelsFilter };
+    reviewLabelsFilter,
+  };
 }

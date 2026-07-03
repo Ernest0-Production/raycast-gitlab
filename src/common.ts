@@ -63,9 +63,7 @@ function createGitLabGQLClient(): GitLabGQL {
     }
     if (networkError) {
       const statusCode = "statusCode" in networkError ? networkError.statusCode : undefined;
-      console.warn(
-        `GitLab GraphQL network error${statusCode ? ` ${statusCode}` : ""}: ${networkError.message}`,
-      );
+      console.warn(`GitLab GraphQL network error${statusCode ? ` ${statusCode}` : ""}: ${networkError.message}`);
     }
   });
 
