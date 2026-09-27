@@ -1,5 +1,14 @@
 # GitLab Changelog
 
+## [Project avatars, grouped project dropdown, and paginated project search] - {PR_MERGE_DATE}
+
+- Show avatars of private projects and groups; avatars are downloaded with authentication and cached locally
+- Fix project dropdown search only finding projects from the first page
+- Group projects in the project dropdown by GitLab group and add a "Recent" section with the last 3 selected projects
+- Add "Show Group Name in Project Dropdowns" preference to hide the top-level group from project names
+- Paginate Search Projects (30 per page) with server-side search that also matches group names
+- Speed up loading of multi-page lists by fetching pages in parallel
+
 ## [MR todos, project search, and API logging] - 2026-07-16
 
 - Show MR todo state from the list query; add or mark todos done without loading the full todos list
