@@ -9,7 +9,7 @@
 - Paginate Search Projects (30 per page) with server-side search that also matches group names
 - Speed up loading of multi-page lists by fetching pages in parallel
 
-## [MR todos, project search, and API logging] - 2026-07-16
+## [MR todos, project search, and API logging] - 2026-07-17
 
 - Show MR todo state from the list query; add or mark todos done without loading the full todos list
 - Add searchable project dropdown with server-side search and pinned selection in Search MR and project pickers
